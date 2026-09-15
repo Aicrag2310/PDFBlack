@@ -1,25 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import electron from 'vite-plugin-electron'
 import { resolve } from 'path'
-import electron from 'vite-plugin-electron/simple'
+
 export default defineConfig({
+  // MUY IMPORTANTE PARA ELECTRON
   base: './',
-  plugins: [react(), electron({
-    main: {
-      entry: 'electron/main.js', // Aquí vivirá el código de la ventana nativa
-    }
-  }),],
+
+  plugins: [
+    react(),
+
+    electron({
+      entry: 'electron/main.js',
+    }),
+  ],
+
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
     },
   },
+
   optimizeDeps: {
     exclude: ['pdfjs-dist'],
   },
+
   worker: {
     format: 'es',
   },
+
   build: {
     rollupOptions: {
       output: {
@@ -30,8 +39,10 @@ export default defineConfig({
       },
     },
   },
+
   server: {
     allowedHosts: ['.ngrok-free.dev'],
+
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
