@@ -36,3 +36,4 @@ Thumbs.db
 # Electron y temporales
 dist-electron/
 vite.config.js.timestamp-*
+dist-electronv.1.0/
