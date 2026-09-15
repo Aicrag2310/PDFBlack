@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   MousePointer2, Type, Image, Pencil, Square, PenLine,
   Highlighter, EyeOff, Undo2, Redo2, ZoomIn, ZoomOut,
@@ -14,14 +14,14 @@ import DropZone from '../ui/DropZone.jsx'
 import styles from './EditorToolbar.module.css'
 
 const TOOLS = [
-  { id: 'select',    icon: MousePointer2, label: 'Select & edit text' },
-  { id: 'text',      icon: Type,          label: 'Add text box' },
-  { id: 'image',     icon: Image,         label: 'Add image' },
-  { id: 'draw',      icon: Pencil,        label: 'Draw' },
-  { id: 'shape',     icon: Square,        label: 'Shape' },
-  { id: 'sign',      icon: PenLine,       label: 'Sign' },
-  { id: 'highlight', icon: Highlighter,   label: 'Highlight' },
-  { id: 'redact',    icon: EyeOff,        label: 'Redact' },
+  { id: 'select',    icon: MousePointer2, label: 'Seleccionar y editar texto' },
+  { id: 'text',      icon: Type,          label: 'Añadir caja de texto' },
+  { id: 'image',     icon: Image,         label: 'Añadir imagen' },
+  { id: 'draw',      icon: Pencil,        label: 'Dibujar' },
+  { id: 'shape',     icon: Square,        label: 'Forma' },
+  { id: 'sign',      icon: PenLine,       label: 'Firmar' },
+  { id: 'highlight', icon: Highlighter,   label: 'Resaltar' },
+  { id: 'redact',    icon: EyeOff,        label: 'Redactar' },
 ]
 
 const FONTS = [
@@ -35,6 +35,11 @@ export default function EditorToolbar() {
     activeTool, setActiveTool, zoom, setZoom,
     file, editLayers, pageCount, fileName, pageBgs, blockBgs,
     currentPage, addTextBlock,
+    addImage,
+    activeShape, setActiveShape,
+    brushSize, setBrushSize,
+    brushColor, setBrushColor,
+    brushType, setBrushType,
     selectedElement, selectedElementPage,
     updateTextBlock, commitExtractedEdit,
     undoEdit, redoEdit,
@@ -44,6 +49,9 @@ export default function EditorToolbar() {
 
   const [ocrRunning,   setOcrRunning]   = useState(false)
   const [ocrProgress,  setOcrProgress]  = useState(0)
+
+  // Referencia para el input de archivo oculto
+  const fileInputRef = useRef(null)
 
   // Mirror selected element's current formatting in the toolbar
   const sel = selectedElement
@@ -57,7 +65,6 @@ export default function EditorToolbar() {
   // Sync toolbar state when selection changes
   useEffect(() => {
     if (!sel) return
-    // Extract CSS font-family to a simple name for the dropdown
     const rawFamily = sel.fontFamily || 'Arial'
     const match = FONTS.find(f => rawFamily.toLowerCase().includes(f.toLowerCase()))
     setFontFamily(match || 'Arial')
@@ -68,12 +75,38 @@ export default function EditorToolbar() {
     setColor(sel.color || '#000000')
   }, [sel?.id, sel?.fontBold, sel?.fontItalic, sel?.fontSize, sel?.color])
 
+  // Función que se ejecuta al seleccionar una imagen de tu computadora
+  const handleImageUpload = (e) => {
+    const uploadedFile = e.target.files[0]
+    if (!uploadedFile) return
+
+    const reader = new FileReader()
+    reader.onload = (evento) => {
+      const base64Image = evento.target.result
+      
+      const nuevaImagen = {
+        id: `img-${Date.now()}`,
+        type: 'image',
+        src: base64Image,
+        x: 50,          // Posición X inicial en el lienzo
+        y: 50,          // Posición Y inicial en el lienzo
+        width: 150,     // Ancho inicial
+        height: 150,    // Alto inicial
+        isEdited: true
+      }
+
+      addImage(currentPage, nuevaImagen)
+      toast.success('Imagen insertada correctamente')
+    }
+    reader.readAsDataURL(uploadedFile)
+    e.target.value = null // Limpiar input
+  }
+
   // Apply a formatting update to the selected element
   const applyFormat = (updates) => {
     if (!sel || !selectedElementPage) return
 
     if (sel.isExtracted && !sel.isEdited) {
-      // Commit the extracted block first, then update
       commitExtractedEdit(selectedElementPage, sel, sel.str)
       updateTextBlock(selectedElementPage, `edited-${sel.id}`, updates)
     } else {
@@ -83,20 +116,19 @@ export default function EditorToolbar() {
 
   const handleFontFamily = (f) => {
     setFontFamily(f)
-    // Map display name to CSS stack
     const cssMap = {
-      'Arial':          'Arial, "Noto Sans", Helvetica, sans-serif',
-      'Helvetica':      'Helvetica, Arial, sans-serif',
+      'Arial':              'Arial, "Noto Sans", Helvetica, sans-serif',
+      'Helvetica':          'Helvetica, Arial, sans-serif',
       'Times New Roman':'"Times New Roman", "Noto Serif", Times, serif',
-      'Georgia':        'Georgia, "Noto Serif", serif',
+      'Georgia':            'Georgia, "Noto Serif", serif',
       'Courier New':    '"Courier New", Courier, monospace',
-      'Verdana':        'Verdana, Arial, sans-serif',
-      'Tahoma':         'Tahoma, Arial, sans-serif',
+      'Verdana':            'Verdana, Arial, sans-serif',
+      'Tahoma':             'Tahoma, Arial, sans-serif',
       'Trebuchet MS':   '"Trebuchet MS", Arial, sans-serif',
-      'Calibri':        'Calibri, Arial, sans-serif',
-      'Cambria':        'Cambria, Georgia, serif',
-      'Garamond':       'Garamond, Georgia, serif',
-      'Palatino':       '"Palatino Linotype", Georgia, serif',
+      'Calibri':            'Calibri, Arial, sans-serif',
+      'Cambria':            'Cambria, Georgia, serif',
+      'Garamond':           'Garamond, Georgia, serif',
+      'Palatino':           '"Palatino Linotype", Georgia, serif',
     }
     applyFormat({ fontFamily: cssMap[f] || f, fontName: f })
   }
@@ -131,13 +163,13 @@ export default function EditorToolbar() {
   }
 
   const handleUndo = () => {
-    if (!undoEdit()) { toast('Nothing to undo'); return }
-    toast('Undone', { duration: 800 })
+    if (!undoEdit()) { toast('Nada que deshacer'); return }
+    toast('Cambio deshecho', { duration: 800 })
   }
 
   const handleRedo = () => {
     if (!redoEdit()) { toast('Nothing to redo'); return }
-    toast('Redone', { duration: 800 })
+    toast('Nada que rehacer', { duration: 800 })
   }
 
   const handleExport = async () => {
@@ -155,16 +187,16 @@ export default function EditorToolbar() {
   const handleOcr = async () => {
     if (!file || ocrRunning) return
     setOcrRunning(true); setOcrProgress(0)
-    const tid = toast.loading('Starting OCR...')
+    const tid = toast.loading('Iniciando OCR...')
     try {
       const { canvas } = await renderPage(currentPage, 1)
       const words = await ocrCanvas(canvas, pct => {
         setOcrProgress(pct)
         toast.loading(`OCR: ${pct}%`, { id: tid })
       })
-      if (!words.length) { toast.error('No text found', { id: tid }); return }
+      if (!words.length) { toast.error('Ningún texto encontrado', { id: tid }); return }
       words.forEach(w => addTextBlock(currentPage, w))
-      toast.success(`Found ${words.length} words`, { id: tid })
+      toast.success(`Encontrado ${words.length} palabras`, { id: tid })
     } catch (e) {
       toast.error('OCR failed: ' + e.message, { id: tid })
     } finally { setOcrRunning(false); setOcrProgress(0) }
@@ -174,7 +206,16 @@ export default function EditorToolbar() {
 
   return (
     <div className={styles.toolbar}>
-      {/* Mobile-only: toggle the Pages drawer (hidden on desktop, panel is always visible there) */}
+      {/* Input de archivo invisible que se activa al hacer clic en el botón de imagen */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="image/png, image/jpeg, image/jpg"
+        onChange={handleImageUpload}
+      />
+
+      {/* Mobile-only: toggle the Pages drawer */}
       <button
         className={`${styles.toolBtn} ${styles.mobileOnly} ${mobilePagesOpen ? styles.active : ''}`}
         onClick={() => setMobilePagesOpen(!mobilePagesOpen)}
@@ -188,19 +229,92 @@ export default function EditorToolbar() {
 
       {/* Drawing tools */}
       <div className={styles.toolGroup}>
-        {TOOLS.map(({ id, icon: Icon, label }) => (
-          <button key={id}
-            className={`${styles.toolBtn} ${activeTool === id ? styles.active : ''}`}
-            onClick={() => setActiveTool(id)} title={label} aria-label={label}
-          >
-            <Icon size={15} />
-          </button>
-        ))}
+        {TOOLS.map(({ id, icon: Icon, label }) => {
+          const isImage = id === 'image'
+          return (
+            <button key={id}
+              className={`${styles.toolBtn} ${activeTool === id ? styles.active : ''}`}
+              onClick={() => {
+                if (isImage) {
+                  fileInputRef.current.click() // Dispara la selección de archivos
+                  setActiveTool(id)
+                } else {
+                  setActiveTool(id)
+                }
+              }}
+              title={label}
+              aria-label={label}
+            >
+              <Icon size={15} />
+            </button>
+          )
+        })}
       </div>
+
+      {activeTool === 'shape' && (
+        <div className={styles.toolGroup} style={{ marginLeft: '10px', background: '#f3f4f6', padding: '2px 8px', borderRadius: '6px' }}>
+          <select 
+            className={styles.select} 
+            value={activeShape} 
+            onChange={(e) => setActiveShape(e.target.value)}
+            title="Tipo de forma"
+          >
+            <option value="rect">⬛ Cuadrado / Rectángulo</option>
+            <option value="circle">⚫ Círculo / Óvalo</option>
+            <option value="line">➖ Línea</option>
+          </select>
+
+          <input
+            type="color"
+            className={styles.colorPicker}
+            value={brushColor}
+            onChange={(e) => setBrushColor(e.target.value)}
+            title="Color de la forma"
+            style={{ marginLeft: '8px' }}
+          />
+        </div>
+      )}
+
+      {/* Opciones si está seleccionada la herramienta DIBUJAR */}
+      {activeTool === 'draw' && (
+        <div className={styles.toolGroup} style={{ marginLeft: '10px', background: '#f3f4f6', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          
+          <select 
+            className={styles.select} 
+            value={brushType} 
+            onChange={(e) => setBrushType(e.target.value)}
+            title="Tipo de pincel"
+          >
+            <option value="solid">🖍️ Lápiz sólido</option>
+            <option value="marker">🖊️ Marcador (Translúcido)</option>
+          </select>
+
+          <input
+            type="color"
+            className={styles.colorPicker}
+            value={brushColor}
+            onChange={(e) => setBrushColor(e.target.value)}
+            title="Color del pincel"
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Grosor: {brushSize}</span>
+            <input
+              type="range"
+              min="1"
+              max="30"
+              value={brushSize}
+              onChange={(e) => setBrushSize(e.target.value)}
+              title="Tamaño del pincel"
+              style={{ width: '80px' }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className={`${styles.sep} ${styles.desktopOnly}`} />
 
-      {/* Font family — hidden on mobile; use the Properties drawer instead (less crowding) */}
+      {/* Font family */}
       <select
         className={`${styles.select} ${styles.desktopOnly}`}
         value={fontFamily}
@@ -229,7 +343,7 @@ export default function EditorToolbar() {
         className={`${styles.fmtBtn} ${styles.desktopOnly} ${bold ? styles.fmtActive : ''}`}
         onClick={handleBold}
         disabled={!hasSelection}
-        title="Bold (affects export)"
+        title="Bold"
         aria-label="Bold"
         aria-pressed={bold}
       >
@@ -241,14 +355,14 @@ export default function EditorToolbar() {
         className={`${styles.fmtBtn} ${styles.desktopOnly} ${italic ? styles.fmtActive : ''}`}
         onClick={handleItalic}
         disabled={!hasSelection}
-        title="Italic (affects export)"
+        title="Italic"
         aria-label="Italic"
         aria-pressed={italic}
       >
         <Italic size={14} />
       </button>
 
-      {/* Underline — CSS only, marks in store */}
+      {/* Underline */}
       <button
         className={`${styles.fmtBtn} ${styles.desktopOnly} ${underline ? styles.fmtActive : ''}`}
         onClick={handleUnderline}
@@ -298,18 +412,13 @@ export default function EditorToolbar() {
       >
         {ocrRunning
           ? <><Loader2 size={13} className={styles.spin} /> OCR {ocrProgress}%</>
-          : <><Scan size={13} /> OCR</>}
-      </button>
-
-      <button className={styles.aiBtn} onClick={() => toast('AI font match — v1.1', { icon: '✨' })}>
-        <Sparkles size={13} /> AI fix
+          : <><Scan size={13} /> Detectar texto</>}
       </button>
 
       <div className={styles.sep} />
-
       <div className={styles.sep} />
 
-      {/* Mobile-only: toggle the Properties drawer */}
+      {/* Mobile-only: toggle properties drawer */}
       <button
         className={`${styles.toolBtn} ${styles.mobileOnly} ${mobilePropertiesOpen ? styles.active : ''}`}
         onClick={() => setMobilePropertiesOpen(!mobilePropertiesOpen)}
@@ -319,7 +428,7 @@ export default function EditorToolbar() {
       </button>
 
       <button className={styles.exportBtn} onClick={handleExport} disabled={!file}>
-        <Download size={14} /> Download PDF
+        <Download size={14} /> Descargar PDasdsF
       </button>
     </div>
   )

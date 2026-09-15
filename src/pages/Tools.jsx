@@ -17,10 +17,11 @@ import {
 import { loadPdf, renderThumbnail, renderPage } from '../lib/pdfRenderer.js'
 import { ocrCanvas } from '../lib/ocrEngine.js'
 import styles from './Tools.module.css'
+import { convertToWord, convertToExcel, convertToImages } from '../lib/converters.js'
 
 /* ─────────────────── shared helpers ─────────────────── */
 
-function FileDropper({ onFile, file, onClear, multiple = false, label = 'Drop PDF here or click to browse' }) {
+function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastra el PDF aquí o haz clic para buscarlo' }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: multiple ? undefined : 1,
@@ -215,10 +216,10 @@ function MergeTool() {
   }
 
   return (
-    <ToolShell title="Merge PDFs" desc="Combine multiple PDFs into one file. Add them below — order matters.">
+    <ToolShell title="Combinar PDF" desc="Combina varios archivos PDF en uno solo. Agrégalos a continuación; el orden es importante.">
       <div {...getRootProps()} className={`${styles.dropArea} ${isDragActive ? styles.dropActive : ''}`}>
         <input {...getInputProps()} />
-        <Upload size={28} /><span>{isDragActive ? 'Drop!' : 'Drop PDFs here or click to add more'}</span>
+        <Upload size={28} /><span>{isDragActive ? 'Suelta los archivos aquí!' : 'Arrastra y suelta los archivos PDF aquí o haz clic para agregar más'}</span>
       </div>
       {files.length > 0 && (
         <div className={styles.fileList}>
@@ -538,6 +539,7 @@ function WatermarkTool() {
     (watermarkType === 'image' && imageFile)
   )
 
+  
   const handleWatermark = async () => {
     if (!file) return
 
@@ -1047,30 +1049,97 @@ function ProtectTool() {
 }
 function UnlockTool() {
   const [file, setFile] = useState(null)
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
 
   const handleUnlock = async () => {
     if (!file) return
     setBusy(true)
-    const tid = toast.loading('Removing restrictions...')
+    const tid = toast.loading('Desbloqueando documento...')
     try {
+      const buf = await file.arrayBuffer()
+      const effectivePassword = password || ''
+
+      // 1. Usamos pdfjsLib para validar y abrir el documento encriptado
+      const loadingTask = pdfjsLib.getDocument({
+        data: buf.slice(0),
+        password: effectivePassword,
+      })
+
+      const pdfDocSrc = await loadingTask.promise
+      const numPages = pdfDocSrc.numPages
+
+      // 2. Creamos un nuevo PDFDocument limpio
       const { PDFDocument } = await import('pdf-lib')
-      const buf   = await file.arrayBuffer()
-      const doc   = await PDFDocument.load(buf, { ignoreEncryption: true })
-      const bytes = await doc.save()
-      downloadBytes(bytes, `unlocked-${file.name}`)
-      toast.success('PDF saved without restrictions', { id: tid })
-    } catch (e) { toast.error('Failed: ' + e.message, { id: tid }) }
-    setBusy(false)
+      const cleanDoc = await PDFDocument.create()
+
+      // 3. Re-renderizamos las páginas sin restricciones
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdfDocSrc.getPage(i)
+        const viewport = page.getViewport({ scale: 2.0 })
+        const baseViewport = page.getViewport({ scale: 1.0 })
+
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d', { alpha: false })
+        canvas.width = Math.round(viewport.width)
+        canvas.height = Math.round(viewport.height)
+
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        await page.render({ canvasContext: ctx, viewport }).promise
+
+        const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+        const pngBytes = await pngBlob.arrayBuffer()
+        const pngImage = await cleanDoc.embedPng(pngBytes)
+
+        const newPage = cleanDoc.addPage([baseViewport.width, baseViewport.height])
+        newPage.drawImage(pngImage, {
+          x: 0,
+          y: 0,
+          width: baseViewport.width,
+          height: baseViewport.height,
+        })
+
+        canvas.width = 1
+        canvas.height = 1
+      }
+
+      const bytes = await cleanDoc.save({ useObjectStreams: true })
+      downloadBytes(bytes, `desbloqueado-${file.name}`)
+      toast.success('¡PDF desbloqueado y descargado!', { id: tid })
+    } catch (e) {
+      if (e.name === 'PasswordException' || e.message?.includes('Password')) {
+        toast.error('Contraseña incorrecta o requerida.', { id: tid })
+      } else {
+        toast.error('Error al desbloquear: ' + e.message, { id: tid })
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
-    <ToolShell title="Unlock PDF" desc="Remove copy/print restrictions from a PDF you own.">
-      <FileDropper file={file} onFile={setFile} onClear={() => setFile(null)} />
-      <div className={styles.infoBox}>
-        ℹ️ This removes PDF user restrictions (copy, print). It does not bypass strong AES-256 owner passwords.
+    <ToolShell title="Quitar Contraseña (Desbloquear)" desc="Elimina la contraseña de apertura o las restricciones de copia/impresión de un PDF.">
+      <FileDropper file={file} onFile={setFile} onClear={() => { setFile(null); setPassword(''); }} />
+      
+      <div className={styles.formField} style={{ marginTop: '16px' }}>
+        <label className={styles.formLabel}>Contraseña actual (solo si pide para abrir)</label>
+        <input 
+          className={styles.formInput} 
+          type="password" 
+          value={password} 
+          onChange={e => setPassword(e.target.value)} 
+          placeholder="Escribe la contraseña aquí..." 
+        />
       </div>
-      <ActionBtn onClick={handleUnlock} disabled={!file} loading={busy} icon={Unlock}>Remove Restrictions</ActionBtn>
+
+      <div className={styles.infoBox}>
+        ℹ️ Si el PDF te pide contraseña al abrirlo, escríbela arriba. El archivo que se descargue será una copia limpia que ya no pedirá clave.
+      </div>
+      
+      <ActionBtn onClick={handleUnlock} disabled={!file} loading={busy} icon={Unlock}>
+        Quitar Contraseña
+      </ActionBtn>
     </ToolShell>
   )
 }
@@ -1090,16 +1159,82 @@ function RedactTool() {
 function EditTool() {
   const navigate = useNavigate()
   return (
-    <ToolShell title="Edit PDF" desc="Full in-browser PDF editor — edit text, add annotations, sign, and more.">
-      <ActionBtn onClick={() => navigate('/editor')} icon={Edit3}>Open PDF Editor →</ActionBtn>
+    <ToolShell title="Editar PDF" desc="Editor de PDF completo en el navegador: edita texto, agrega anotaciones, firma y mucho más.">
+      <ActionBtn onClick={() => navigate('/editor')} icon={Edit3}>Abrir PDF Editor →</ActionBtn>
     </ToolShell>
   )
 }
 
+function ConvertTool() {
+    const [file, setFile] = useState(null)
+    const [format, setFormat] = useState('word') // 'word' | 'excel' | 'images'
+    const [busy, setBusy] = useState(false)
+
+    const handleConvert = async () => {
+      if (!file) return
+      setBusy(true)
+      const tid = toast.loading(`Convirtiendo a ${format.toUpperCase()}...`)
+      
+      try {
+        const buf = await file.arrayBuffer()
+        
+        if (format === 'word') {
+          await convertToWord(buf, file.name)
+        } else if (format === 'excel') {
+          await convertToExcel(buf, file.name)
+        } else if (format === 'images') {
+          await convertToImages(buf, file.name)
+        }
+        
+        toast.success(`¡Conversión exitosa!`, { id: tid })
+      } catch (e) { 
+        toast.error('Error al convertir: ' + e.message, { id: tid }) 
+        console.error(e)
+      }
+      setBusy(false)
+    }
+
+    return (
+      <ToolShell title="Convertir PDF" desc="Extrae el contenido de tu PDF y conviértelo a Word, Excel o extrae sus páginas como Imágenes en alta resolución.">
+        <FileDropper file={file} onFile={setFile} onClear={() => setFile(null)} />
+        
+        <div className={styles.modeRow}>
+          <button 
+            className={`${styles.modeBtn} ${format === 'word' ? styles.modeBtnActive : ''}`} 
+            onClick={() => setFormat('word')}
+          >
+            📄 Word (.docx)
+          </button>
+          <button 
+            className={`${styles.modeBtn} ${format === 'excel' ? styles.modeBtnActive : ''}`} 
+            onClick={() => setFormat('excel')}
+          >
+            📊 Excel (.xlsx)
+          </button>
+          <button 
+            className={`${styles.modeBtn} ${format === 'images' ? styles.modeBtnActive : ''}`} 
+            onClick={() => setFormat('images')}
+          >
+            🖼 Imágenes (.zip)
+          </button>
+        </div>
+
+        <ActionBtn onClick={handleConvert} disabled={!file} loading={busy} icon={FileText}>
+          Convertir y Descargar
+        </ActionBtn>
+      </ToolShell>
+    )
+  }
+
+
 /* ─────────────────── tool registry ─────────────────── */
 const TOOL_DEFS = [
-  { id:'edit',      icon:Edit3,       label:'Edit PDF',       color:'#e84545', category:'Edit',     desc:'Edit text, images, annotate.' },
-  { id:'merge',     icon:Merge,       label:'Merge PDFs',     color:'#3b82f6', category:'Organize', desc:'Combine multiple PDFs into one.' },
+  { id:'edit',      icon:Edit3,       label:'Editar PDF',       color:'#e84545', category:'Editar',     desc:'Editar texto, imágenes, anotar.' },
+  { id:'merge',     icon:Merge,       label:'Combinar PDF',     color:'#3b82f6', category:'Organizar', desc:'Combina varios archivos PDF en uno solo.' },
+  { id:'unlock',    icon:Unlock,      label:'Desbloquear PDF',     color:'#10b981', category:'Secure',   desc:'Eliminar restricciones de copia e impresión.' },
+  { id:'convert',   icon:FileDown,    label:'Convertir PDF',    color:'#10b981', category:'Convertir', desc:'Convierte PDF a Word, Excel o imágenes PNG.' },
+ /* 
+ 
   { id:'split',     icon:Scissors,    label:'Split PDF',      color:'#e84545', category:'Organize', desc:'Split by range or every N pages.' },
   { id:'extract',   icon:FileSearch,  label:'Extract Pages',  color:'#f59e0b', category:'Organize', desc:'Pull specific pages into a new file.' },
   { id:'reorder',   icon:Layers,      label:'Reorder Pages',  color:'#8b5cf6', category:'Organize', desc:'Drag-and-drop page reordering.' },
@@ -1110,16 +1245,16 @@ const TOOL_DEFS = [
   { id:'protect',   icon:Lock,        label:'Protect PDF',    color:'#e84545', category:'Secure',   desc:'Add password encryption.' },
   { id:'unlock',    icon:Unlock,      label:'Unlock PDF',     color:'#10b981', category:'Secure',   desc:'Remove copy/print restrictions.' },
   { id:'redact',    icon:EyeOff,      label:'Redact PDF',     color:'#1a1a1a', category:'Secure',   desc:'Black out sensitive content.' },
-]
+*/]
 
 const TOOL_COMPONENTS = {
   edit: EditTool, merge: MergeTool, split: SplitTool, extract: ExtractTool,
   reorder: ReorderTool, rotate: RotateTool, compress: CompressTool,
   ocr: OcrTool, watermark: WatermarkTool, protect: ProtectTool,
-  unlock: UnlockTool, redact: RedactTool,
+  unlock: UnlockTool, redact: RedactTool,convert: ConvertTool,
 }
 
-const CATEGORIES = ['All','Organize','Optimize','Convert','Secure','Edit']
+const CATEGORIES = ['All','Organizar','Optimizar','Convertir','Seguridad','Editar']
 
 export default function Tools() {
   const [activeCat,  setActiveCat]  = useState('All')
@@ -1134,7 +1269,7 @@ export default function Tools() {
       <div className={styles.layout}>
         <div className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.sidebarTitle}>PDF Tools</span>
+            <span className={styles.sidebarTitle}>PDF Herramientas</span>
             <span className={styles.toolCount}>{TOOL_DEFS.length}</span>
           </div>
           <div className={styles.cats}>
@@ -1165,15 +1300,15 @@ export default function Tools() {
           {ToolUI
             ? <>
                 <button className={styles.backBtn} onClick={() => setActiveTool(null)}>
-                  <ArrowLeft size={14}/> All tools
+                  <ArrowLeft size={14}/> Todas las herramientas
                 </button>
                 <ToolUI />
               </>
             : (
               <div className={styles.toolGrid}>
                 <div className={styles.toolGridHeader}>
-                  <h1 className={styles.toolGridTitle}>All PDF Tools</h1>
-                  <p className={styles.toolGridSub}>Every tool is free, unlimited, and runs 100% in your browser.</p>
+                  <h1 className={styles.toolGridTitle}>Todas las herramientas PDF</h1>
+                  <p className={styles.toolGridSub}>Todas las herramientas son gratuitas, ilimitadas y funcionan al 100 % en tu navegador.</p>
                 </div>
                 <div className={styles.cards}>
                   {filtered.map(tool => {
@@ -1185,7 +1320,7 @@ export default function Tools() {
                         </div>
                         <div className={styles.toolCardName}>{tool.label}</div>
                         <div className={styles.toolCardDesc}>{tool.desc}</div>
-                        <span className={styles.freeBadge}>Free</span>
+                        <span className={styles.freeBadge}>Aicrag</span>
                       </div>
                     )
                   })}

@@ -67,7 +67,7 @@ export default function PageThumbnails() {
   return (
     <div className={styles.panel} onClick={closeMenu}>
       <div className={styles.header}>
-        <span className={styles.label}>Pages</span>
+        <span className={styles.label}>Páginas</span>
         <span className={styles.count}>{pageCount}</span>
       </div>
 
@@ -99,7 +99,7 @@ export default function PageThumbnails() {
 
       <button className={styles.addBtn} onClick={handleAddPage}>
         <Plus size={14} />
-        Add blank page
+        Añadir página blanca
       </button>
 
       {contextMenu && (

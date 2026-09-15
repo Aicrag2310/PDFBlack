@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate  } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Analytics } from '@vercel/analytics/react'
 import Landing from './pages/Landing.jsx'
@@ -10,7 +10,8 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/about" element={<Landing />} />
+        <Route path="/" element={<Navigate to="/editor" replace />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/tools/:toolId" element={<Tools />} />

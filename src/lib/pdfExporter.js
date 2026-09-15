@@ -29,12 +29,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc ||= new URL(
 
 // ─── Color ────────────────────────────────────────────────────────────────
 function hexToRgb(hex) {
-  if (!hex || hex === 'transparent') return rgb(0,0,0)
-  const c = hex.replace('#','').padEnd(6,'0')
+  if (!hex || hex === 'transparent') return rgb(0, 0, 0)
+  const c = hex.replace('#', '').padEnd(6, '0')
   return rgb(
-    parseInt(c.slice(0,2),16)/255,
-    parseInt(c.slice(2,4),16)/255,
-    parseInt(c.slice(4,6),16)/255,
+    parseInt(c.slice(0, 2), 16) / 255,
+    parseInt(c.slice(2, 4), 16) / 255,
+    parseInt(c.slice(4, 6), 16) / 255,
   )
 }
 
@@ -44,27 +44,27 @@ function hexToRgb(hex) {
 // reuse embedded fonts or embed measured substitutes whenever possible.
 function pickStdFont(block) {
   // Prefer pre-classified info if present
-  const info   = classifyFont(block.fontName || block.stdFont || '')
-  const family = block.stdFont  || info.family
-  const bold   = block.fontBold   ?? info.bold
+  const info = classifyFont(block.fontName || block.stdFont || '')
+  const family = block.stdFont || info.family
+  const bold = block.fontBold ?? info.bold
   const italic = block.fontItalic ?? info.italic
 
   if (family === 'Courier') {
     if (bold && italic) return StandardFonts.CourierBoldOblique
-    if (bold)           return StandardFonts.CourierBold
-    if (italic)         return StandardFonts.CourierOblique
+    if (bold) return StandardFonts.CourierBold
+    if (italic) return StandardFonts.CourierOblique
     return StandardFonts.Courier
   }
   if (family === 'Times-Roman') {
     if (bold && italic) return StandardFonts.TimesRomanBoldItalic
-    if (bold)           return StandardFonts.TimesRomanBold
-    if (italic)         return StandardFonts.TimesRomanItalic
+    if (bold) return StandardFonts.TimesRomanBold
+    if (italic) return StandardFonts.TimesRomanItalic
     return StandardFonts.TimesRoman
   }
   // Everything else → Helvetica family
   if (bold && italic) return StandardFonts.HelveticaBoldOblique
-  if (bold)           return StandardFonts.HelveticaBold
-  if (italic)         return StandardFonts.HelveticaOblique
+  if (bold) return StandardFonts.HelveticaBold
+  if (italic) return StandardFonts.HelveticaOblique
   return StandardFonts.Helvetica
 }
 
@@ -78,10 +78,10 @@ function pickStdFont(block) {
 //   baseline_pts = baseline_canvas / BASE_SCALE
 //   pdf_y = pageHeight_pts - baseline_pts
 function canvasToPdf(cx, cy, cFontSize, pageH, cBaselineOffset) {
-  const x        = cx / BASE_SCALE
-  const size     = Math.max(cFontSize / BASE_SCALE, 1)
+  const x = cx / BASE_SCALE
+  const size = Math.max(cFontSize / BASE_SCALE, 1)
   const baseline = (cy + (cBaselineOffset ?? cFontSize * 0.8)) / BASE_SCALE
-  const y        = pageH - baseline
+  const y = pageH - baseline
   return { x, y, size }
 }
 
@@ -225,10 +225,10 @@ function whiteoutBlock(page, block, pageH, bgRgb) {
 }
 
 function parseRgbString(str) {
-  if (!str) return rgb(1,1,1)
+  if (!str) return rgb(1, 1, 1)
   const m = str.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
-  if (m) return rgb(+m[1]/255, +m[2]/255, +m[3]/255)
-  return rgb(1,1,1)
+  if (m) return rgb(+m[1] / 255, +m[2] / 255, +m[3] / 255)
+  return rgb(1, 1, 1)
 }
 
 function rgbArrayToCss([r, g, b]) {
@@ -477,26 +477,80 @@ function drawVisualText(ctx, block, scale) {
 
 function drawVisualAnnotations(ctx, annotations, scale) {
   for (const ann of annotations || []) {
-    const x = (ann.x || 0) * scale
-    const y = (ann.y || 0) * scale
-    const w = (ann.width || 0) * scale
-    const h = (ann.height || 0) * scale
-
     ctx.save()
-    if (ann.type === 'highlight') {
-      ctx.globalAlpha = 0.4
-      ctx.fillStyle = 'rgb(255,235,38)'
-      ctx.fillRect(x, y, w, h)
-    } else if (ann.type === 'redact') {
-      ctx.fillStyle = '#000000'
-      ctx.fillRect(x, y, w, h)
-    } else if (ann.type === 'rect') {
-      ctx.strokeStyle = ann.color || '#e84545'
-      ctx.lineWidth = 1.5 * scale
-      ctx.strokeRect(x, y, w, h)
+
+    // 1. Dibujos a mano alzada (Pincel)
+    if (ann.type === 'path') {
+      if (ann.points && ann.points.length > 0) {
+        ctx.beginPath()
+        ctx.moveTo(ann.points[0].x * scale, ann.points[0].y * scale)
+        for (let i = 1; i < ann.points.length; i++) {
+          ctx.lineTo(ann.points[i].x * scale, ann.points[i].y * scale)
+        }
+        ctx.strokeStyle = ann.color || '#000000'
+        ctx.lineWidth = (ann.strokeWidth || 5) * scale
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        if (ann.brushType === 'marker') ctx.globalAlpha = 0.4
+        ctx.stroke()
+      }
     }
+    // 2. Formas geométricas
+    else if (ann.type === 'shape') {
+      const minX = Math.min(ann.startX, ann.endX) * scale
+      const minY = Math.min(ann.startY, ann.endY) * scale
+      const w = Math.abs(ann.startX - ann.endX) * scale
+      const h = Math.abs(ann.startY - ann.endY) * scale
+
+      ctx.strokeStyle = ann.color || '#000000'
+      ctx.lineWidth = (ann.strokeWidth || 5) * scale
+      ctx.lineCap = 'round'
+
+      if (ann.shapeType === 'rect') {
+        ctx.strokeRect(minX, minY, w, h)
+      } else if (ann.shapeType === 'circle') {
+        ctx.beginPath()
+        ctx.ellipse(minX + w / 2, minY + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI)
+        ctx.stroke()
+      } else if (ann.shapeType === 'line') {
+        ctx.beginPath()
+        ctx.moveTo(ann.startX * scale, ann.startY * scale)
+        ctx.lineTo(ann.endX * scale, ann.endY * scale)
+        ctx.stroke()
+      }
+    }
+    // 3. Herramientas originales (Resaltar, Redactar, Viejos cuadros)
+    else {
+      const ax = (ann.x || 0) * scale
+      const ay = (ann.y || 0) * scale
+      const aw = (ann.width || 0) * scale
+      const ah = (ann.height || 0) * scale
+
+      if (ann.type === 'highlight') {
+        ctx.globalAlpha = 0.4
+        ctx.fillStyle = 'rgb(255,235,38)'
+        ctx.fillRect(ax, ay, aw, ah)
+      } else if (ann.type === 'redact') {
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(ax, ay, aw, ah)
+      } else if (ann.type === 'rect') {
+        ctx.strokeStyle = ann.color || '#e84545'
+        ctx.lineWidth = 1.5 * scale
+        ctx.strokeRect(ax, ay, aw, ah)
+      }
+    }
+
     ctx.restore()
   }
+}
+
+function loadImageForCanvas(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
 }
 
 function layerHasVisualEdits(layer) {
@@ -507,7 +561,10 @@ function layerHasVisualEdits(layer) {
     return Boolean(String(block?.str || '').trim())
   })
 
-  return hasTextEdits || Boolean((layer.annotations || []).length)
+  const hasImages = Boolean((layer.images || []).length)
+
+  // ¡Ahora sí le decimos que también exporte si hay imágenes!
+  return hasTextEdits || Boolean((layer.annotations || []).length) || hasImages
 }
 
 async function exportVisualPdf(originalArrayBuffer, editLayers, pageCount, pageBgs) {
@@ -582,6 +639,25 @@ async function exportVisualPdf(originalArrayBuffer, editLayers, pageCount, pageB
       }
       drawVisualAnnotations(ctx, layer.annotations, coordScale)
 
+      for (const imgBlock of (layer.images || [])) {
+        if (!imgBlock.src) continue
+        try {
+          const imgElement = await loadImageForCanvas(imgBlock.src)
+
+          // Calculamos la posición y tamaño usando el coordScale 
+          // (igual que hace el código original con las anotaciones)
+          const imgX = imgBlock.x * coordScale
+          const imgY = imgBlock.y * coordScale
+          const imgW = imgBlock.width * coordScale
+          const imgH = imgBlock.height * coordScale
+
+          // Dibujamos la imagen en el lienzo
+          ctx.drawImage(imgElement, imgX, imgY, imgW, imgH)
+        } catch (err) {
+          console.warn('No se pudo dibujar la imagen en el canvas visual', err)
+        }
+      }
+
       const pngBytes = await canvasToPngBytes(canvas)
       const png = await out.embedPng(pngBytes)
       const outPage = out.addPage([baseViewport.width, baseViewport.height])
@@ -604,9 +680,9 @@ async function exportVisualPdf(originalArrayBuffer, editLayers, pageCount, pageB
 
 // ─── Main export ──────────────────────────────────────────────────────────
 async function exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageBgs, blockBgs) {
-  const pdfDoc    = await PDFDocument.load(originalArrayBuffer, { ignoreEncryption: true })
+  const pdfDoc = await PDFDocument.load(originalArrayBuffer, { ignoreEncryption: true })
   pdfDoc.registerFontkit(fontkit)
-  const pages     = pdfDoc.getPages()
+  const pages = pdfDoc.getPages()
   const fontCache = {}
 
   async function getFont(block, pageNum, previewText = '') {
@@ -647,14 +723,14 @@ async function exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageB
   for (let i = 0; i < pageCount; i++) {
     const layer = editLayers[i + 1]
     if (!layer) continue
-    const page  = pages[i]
-    if (!page)  continue
+    const page = pages[i]
+    if (!page) continue
     const { width: pageW, height: pageH } = page.getSize()
 
     // Page background colour for whiteout rect
     const bgRgb = pageBgs?.[i + 1]
-      ? parseRgbString(pageBgs[i + 1].replace('rgb(','').replace(')',''))
-      : rgb(1,1,1)
+      ? parseRgbString(pageBgs[i + 1].replace('rgb(', '').replace(')', ''))
+      : rgb(1, 1, 1)
 
     // 1. Whiteout all edited original positions
     // Prefer each block's own locally-sampled color (matters on watermarks,
@@ -671,10 +747,10 @@ async function exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageB
     // 2. Draw replacement + new text
     for (const block of (layer.texts || [])) {
       if (!block.str?.trim()) continue
-      const safe  = sanitize(block.str)
-      if (!safe)  continue
+      const safe = sanitize(block.str)
+      if (!safe) continue
 
-      const font  = await getFont(block, i + 1, safe)
+      const font = await getFont(block, i + 1, safe)
       const color = hexToRgb(block.color || '#000000')
       const { x, y, size } = canvasToPdf(block.x, block.y, block.fontSize, pageH, block.baselineOffset)
       const drawOptions = { x, y, size, font, color }
@@ -696,19 +772,113 @@ async function exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageB
     }
 
     // 3. Annotations (highlight / redact / shape)
+    // 3. Annotations (highlight / redact / shape / paths)
     for (const ann of (layer.annotations || [])) {
-      const ax = ann.x / BASE_SCALE
-      const aw = ann.width  / BASE_SCALE
-      const ah = ann.height / BASE_SCALE
-      const ay = pageH - (ann.y / BASE_SCALE) - ah
+      // Dibujo libre (Pincel)
+      if (ann.type === 'path') {
+        if (!ann.points || ann.points.length === 0) continue;
 
-      if (ann.type === 'highlight') {
-        page.drawRectangle({ x:ax, y:ay, width:aw, height:ah, color:rgb(1,0.92,0.15), opacity:0.4 })
-      } else if (ann.type === 'redact') {
-        page.drawRectangle({ x:ax, y:ay, width:aw, height:ah, color:rgb(0,0,0) })
-      } else if (ann.type === 'rect') {
-        page.drawRectangle({ x:ax, y:ay, width:aw, height:ah,
-          borderColor:hexToRgb(ann.color||'#e84545'), borderWidth:1.5, opacity:0 })
+        // Transformar todos los puntos al espacio matemático del PDF (Invirtiendo Y)
+        const svgPath = ann.points.map((p, index) => {
+          const pdfX = p.x / BASE_SCALE;
+          const pdfY = pageH - (p.y / BASE_SCALE);
+          return `${index === 0 ? 'M' : 'L'} ${pdfX} ${pdfY}`;
+        }).join(' ');
+
+        page.drawSvgPath(svgPath, {
+          borderColor: hexToRgb(ann.color || '#000000'),
+          borderWidth: ann.strokeWidth / BASE_SCALE,
+          opacity: ann.brushType === 'marker' ? 0.4 : 1,
+          borderLineCap: 1, // 1 = Extremos redondeados
+          borderLineJoin: 1 // 1 = Esquinas redondeadas
+        });
+      }
+      // Formas Geométricas
+      else if (ann.type === 'shape') {
+        const minX = Math.min(ann.startX, ann.endX) / BASE_SCALE;
+        const minY = Math.min(ann.startY, ann.endY) / BASE_SCALE;
+        const w = Math.abs(ann.startX - ann.endX) / BASE_SCALE;
+        const h = Math.abs(ann.startY - ann.endY) / BASE_SCALE;
+
+        const pdfY = pageH - minY - h;
+        const borderColor = hexToRgb(ann.color || '#000000');
+        const borderWidth = ann.strokeWidth / BASE_SCALE;
+
+        if (ann.shapeType === 'rect') {
+          page.drawRectangle({
+            x: minX, y: pdfY, width: w, height: h,
+            borderColor, borderWidth, opacity: 1,
+          });
+        } else if (ann.shapeType === 'circle') {
+          page.drawEllipse({
+            x: minX + w / 2, y: pdfY + h / 2,
+            xScale: w / 2, yScale: h / 2,
+            borderColor, borderWidth, opacity: 1,
+          });
+        } else if (ann.shapeType === 'line') {
+          page.drawLine({
+            start: { x: ann.startX / BASE_SCALE, y: pageH - (ann.startY / BASE_SCALE) },
+            end: { x: ann.endX / BASE_SCALE, y: pageH - (ann.endY / BASE_SCALE) },
+            color: borderColor, thickness: borderWidth, opacity: 1
+          });
+        }
+      }
+      // Herramientas Viejas
+      else {
+        const ax = (ann.x || 0) / BASE_SCALE
+        const aw = (ann.width || 0) / BASE_SCALE
+        const ah = (ann.height || 0) / BASE_SCALE
+        const ay = pageH - ((ann.y || 0) / BASE_SCALE) - ah
+
+        if (ann.type === 'highlight') {
+          page.drawRectangle({ x: ax, y: ay, width: aw, height: ah, color: rgb(1, 0.92, 0.15), opacity: 0.4 })
+        } else if (ann.type === 'redact') {
+          page.drawRectangle({ x: ax, y: ay, width: aw, height: ah, color: rgb(0, 0, 0) })
+        } else if (ann.type === 'rect') {
+          page.drawRectangle({
+            x: ax, y: ay, width: aw, height: ah,
+            borderColor: hexToRgb(ann.color || '#e84545'), borderWidth: 1.5,
+          })
+        }
+      }
+    }
+
+    // 4. Custom Images
+    for (const img of (layer.images || [])) {
+      console.log('Exporting image', img)
+      if (!img.src) continue;
+
+      try {
+        let embeddedImage;
+        // Detectar si la imagen en base64 es PNG o JPEG
+        const respuesta = await fetch(img.src);
+        const imageBuffer = await respuesta.arrayBuffer();
+
+        if (img.src.startsWith('data:image/png')) {
+          embeddedImage = await pdfDoc.embedPng(imageBuffer);
+        } else {
+          embeddedImage = await pdfDoc.embedJpg(imageBuffer);
+        }
+
+        // Convertir las coordenadas de la pantalla (Pixeles) a puntos del PDF
+        const pdfX = img.x / BASE_SCALE;
+        const pdfW = img.width / BASE_SCALE;
+        const pdfH = img.height / BASE_SCALE;
+
+        console.log('Coordenadas PDF:', { pdfX, pdfY: pageH - (img.y / BASE_SCALE) - pdfH, pdfW, pdfH });
+
+        // En los PDFs, la coordenada Y arranca desde ABAJO hacia arriba.
+        // Por lo tanto, hay que invertir la coordenada Y:
+        const pdfY = pageH - (img.y / BASE_SCALE) - pdfH;
+
+        page.drawImage(embeddedImage, {
+          x: pdfX,
+          y: pdfY,
+          width: pdfW,
+          height: pdfH,
+        });
+      } catch (err) {
+        console.warn('No se pudo exportar una imagen', err);
       }
     }
   }
@@ -718,10 +888,13 @@ async function exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageB
 
 export async function exportPdf(originalArrayBuffer, editLayers, pageCount, pageBgs, blockBgs) {
   try {
-    return await exportVisualPdf(originalArrayBuffer, editLayers, pageCount, pageBgs)
-  } catch (err) {
-    console.warn('Visual PDF export failed; falling back to vector export.', err)
+    // 1. Intentamos la exportación Vectorial PRIMERO
+    console.log("Exportando mediante motor Vectorial...")
     return await exportVectorPdf(originalArrayBuffer, editLayers, pageCount, pageBgs, blockBgs)
+  } catch (err) {
+    // 2. Solo si la vectorial falla críticamente, usamos la Visual como respaldo
+    console.warn('Vector PDF export failed; falling back to visual export.', err)
+    return await exportVisualPdf(originalArrayBuffer, editLayers, pageCount, pageBgs)
   }
 }
 
@@ -737,66 +910,66 @@ export async function mergePdfs(arrayBuffers) {
 }
 
 export async function splitPdf(arrayBuffer, ranges) {
-  const src   = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+  const src = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
   const total = src.getPageCount()
-  const out   = []
+  const out = []
   for (const range of ranges) {
-    const doc     = await PDFDocument.create()
+    const doc = await PDFDocument.create()
     const indices = []
-    for (let i = range.from-1; i < range.to && i < total; i++) indices.push(i)
+    for (let i = range.from - 1; i < range.to && i < total; i++) indices.push(i)
     if (!indices.length) continue
-    ;(await doc.copyPages(src, indices)).forEach(p => doc.addPage(p))
+      ; (await doc.copyPages(src, indices)).forEach(p => doc.addPage(p))
     out.push(await doc.save())
   }
   return out
 }
 
 export async function extractPages(arrayBuffer, pageNums) {
-  const src     = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
-  const doc     = await PDFDocument.create()
-  const total   = src.getPageCount()
-  const indices = [...new Set(pageNums.map(n=>n-1))]
-    .filter(i=>i>=0&&i<total).sort((a,b)=>a-b)
-  ;(await doc.copyPages(src, indices)).forEach(p => doc.addPage(p))
+  const src = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+  const doc = await PDFDocument.create()
+  const total = src.getPageCount()
+  const indices = [...new Set(pageNums.map(n => n - 1))]
+    .filter(i => i >= 0 && i < total).sort((a, b) => a - b)
+    ; (await doc.copyPages(src, indices)).forEach(p => doc.addPage(p))
   return await doc.save()
 }
 
 export async function rotatePdf(arrayBuffer, pageNum, angle) {
-  const doc  = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
-  const page = doc.getPages()[pageNum-1]
-  if (page) page.setRotation(degrees((page.getRotation().angle+angle)%360))
+  const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+  const page = doc.getPages()[pageNum - 1]
+  if (page) page.setRotation(degrees((page.getRotation().angle + angle) % 360))
   return await doc.save()
 }
 
 export async function rotateAllPages(arrayBuffer, angle) {
   const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
-  doc.getPages().forEach(p => p.setRotation(degrees((p.getRotation().angle+angle)%360)))
+  doc.getPages().forEach(p => p.setRotation(degrees((p.getRotation().angle + angle) % 360)))
   return await doc.save()
 }
 
 export async function removePageFromPdf(arrayBuffer, pageNum) {
   const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
-  if (doc.getPageCount()<=1) throw new Error('Cannot remove the only page')
-  doc.removePage(pageNum-1)
+  if (doc.getPageCount() <= 1) throw new Error('Cannot remove the only page')
+  doc.removePage(pageNum - 1)
   return await doc.save()
 }
 
 export async function addPageToPdf(arrayBuffer, position) {
   const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
-  doc.insertPage(position, [595.28,841.89])
+  doc.insertPage(position, [595.28, 841.89])
   return await doc.save()
 }
 
 export async function reorderPages(arrayBuffer, newOrder) {
   const src = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
   const doc = await PDFDocument.create()
-  ;(await doc.copyPages(src, newOrder.map(n=>n-1))).forEach(p => doc.addPage(p))
+    ; (await doc.copyPages(src, newOrder.map(n => n - 1))).forEach(p => doc.addPage(p))
   return await doc.save()
 }
 
 export async function compressPdf(arrayBuffer) {
-  const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption:true, updateMetadata:false })
-  return await doc.save({ useObjectStreams:true, addDefaultPage:false })
+  const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true, updateMetadata: false })
+  return await doc.save({ useObjectStreams: true, addDefaultPage: false })
 }
 
 function canvasToJpegBytes(canvas, quality) {
@@ -1008,10 +1181,22 @@ export async function addWatermark(input, textOrOptions, maybeOptions = {}) {
   return await doc.save()
 }
 
+export async function decryptPdf(arrayBuffer, password) {
+  try {
+    // Al pasarle la contraseña, pdf-lib desbloquea el documento en memoria
+    const doc = await PDFDocument.load(arrayBuffer, { password });
+
+    // Al guardarlo sin opciones adicionales, se guarda SIN encriptación
+    return await doc.save();
+  } catch (error) {
+    throw new Error('Contraseña incorrecta o tipo de encriptación no soportado.');
+  }
+}
+
 export function downloadBytes(bytes, filename) {
-  const blob = new Blob([bytes], { type:'application/pdf' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href=url; a.download=filename; a.click()
-  setTimeout(()=>URL.revokeObjectURL(url), 1000)
+  const blob = new Blob([bytes], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

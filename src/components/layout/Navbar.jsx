@@ -13,8 +13,8 @@ export default function Navbar({ variant = 'app' }) {
           <div className={styles.logoMark}>
             <FileText size={14} />
           </div>
-          <span className={styles.logoName}>PDFZero</span>
-          <span className={styles.logoBeta}>beta</span>
+          <span className={styles.logoName}>PDFBlack</span>
+          <span className={styles.logoBeta}>Aicrag</span>
         </Link>
 
         {variant === 'app' && (
@@ -23,37 +23,9 @@ export default function Navbar({ variant = 'app' }) {
               Editor
             </Link>
             <Link to="/tools" className={`${styles.tab} ${location.pathname.startsWith('/tools') ? styles.active : ''}`}>
-              All Tools
+              Todas las herramientas
             </Link>
           </div>
-        )}
-      </div>
-
-      <div className={styles.right}>
-        <div className={styles.privacyBadge}>
-          <div className={styles.dot} />
-          <span>100% local processing</span>
-        </div>
-
-        <a
-          href="https://github.com/bevinkatti/pdfzero"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.githubBtn}
-        >
-          <Github size={14} />
-          <span>GitHub</span>
-          <span className={styles.starCount}>
-            <Star size={11} />
-            Star
-          </span>
-        </a>
-
-        {variant === 'landing' && (
-          <Link to="/editor" className={styles.ctaBtn}>
-            <Zap size={14} />
-            Start editing free
-          </Link>
         )}
       </div>
     </nav>

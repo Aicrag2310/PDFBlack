@@ -385,22 +385,20 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
       onClick={e => e.stopPropagation()}
     >
       {[
-        { label: '✏️ Edit', action: () => onEdit(), },
+        { label: '✏️ Editar', action: () => onEdit(), },
         { label: null }, // separator
         {
-          icon: <Copy size={16} />, title: 'Duplicate', action: () => {
+          icon: <Copy size={16} />, title: 'Duplicar', action: () => {
             const clone = { ...block, id: `new-${Date.now()}`, x: pos.x + 14, y: pos.y + 14, isExtracted: false, isEdited: false, originalId: undefined }
             updateTextBlock(pageNum, clone.id, clone)
-            toast.success('Duplicated')
+            toast.success('Duplicado')
           }
         },
-        { icon: <Wand2 size={16} />, title: 'AI font match', action: () => toast('AI font match — v1.1', { icon: '✨' }) },
-        { label: null }, // separator
         {
           icon: <Trash2 size={16} />, title: 'Delete', danger: true, action: () => {
             removeTextBlock(pageNum, block.id)
             setSelectedElement(null, null)
-            toast.success('Removed')
+            toast.success('Eliminado')
           }
         },
       ].map((item, i) => {

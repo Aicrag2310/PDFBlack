@@ -10,6 +10,7 @@ import {
   BASE_SCALE,
 } from '../../lib/pdfRenderer.js'
 import TextBlock, { TextContextToolbar } from './TextBlock.jsx'
+import ImageBlock from './ImageBlock.jsx'
 import AnnotationLayer from './AnnotationLayer.jsx'
 import styles from './PdfCanvas.module.css'
 
@@ -125,7 +126,7 @@ export default function PdfCanvas() {
     const x = (e.clientX - rect.left)  / zoom
     const y = (e.clientY - rect.top)   / zoom
     const newBlock = {
-      id: `new-${Date.now()}`, str: 'New text',
+      id: `new-${Date.now()}`, str: 'Nuevo texto',
       x, y, width: 120, height: 20,
       fontSize: 14, fontName: 'Helvetica',
       fontFamily: 'Arial, Helvetica, sans-serif',
@@ -198,7 +199,7 @@ export default function PdfCanvas() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.pageLabel}>
-        Page {currentPage} / {pageCount} &nbsp;·&nbsp; {Math.round(zoom * 100)}%
+        Página {currentPage} / {pageCount} &nbsp;·&nbsp; {Math.round(zoom * 100)}%
       </div>
 
       <div style={{ position:'relative', width:scaledW, height:scaledH, flexShrink:0 }}>
@@ -290,6 +291,15 @@ export default function PdfCanvas() {
               forceEdit={editingId === block.id}
               onEditStart={() => setEditingId(block.id)}
               onEditEnd={()   => setEditingId(null)}
+            />
+          ))}
+
+          {(layer.images || []).map(img => (
+            <ImageBlock
+              key={img.id}
+              image={img}
+              pageNum={currentPage}
+              zoom={zoom}
             />
           ))}
 

@@ -48,9 +48,9 @@ export default function Editor() {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => setPdfReady(true))
         })
-        toast.success(`Loaded ${doc.numPages} page${doc.numPages > 1 ? 's' : ''}`)
+        toast.success(`Cargando ${doc.numPages} pagina${doc.numPages > 1 ? 's' : ''}`)
       })
-      .catch((e) => toast.error('Failed to parse PDF: ' + e.message))
+      .catch((e) => toast.error('Error al cargar el PDF: ' + e.message))
   }, [file, setPageCount])
 
   const handleKeyDown = useCallback((e) => {
@@ -102,7 +102,7 @@ export default function Editor() {
               {!pdfReady && (
                 <div className={styles.loadingCanvas}>
                   <div className={styles.loadingSpinner} />
-                  <span>Loading PDF…</span>
+                  <span>Cargando PDF…</span>
                 </div>
               )}
             </main>
@@ -121,9 +121,9 @@ export default function Editor() {
         ) : (
           <div className={styles.emptyState}>
             <div className={styles.emptyContent}>
-              <h2 className={styles.emptyTitle}>Open a PDF to start editing</h2>
+              <h2 className={styles.emptyTitle}>Abre un PDF para comenzar a editarlo</h2>
               <p className={styles.emptySub}>
-                Files are processed entirely in your browser — never uploaded anywhere.
+                Los archivos se procesan completamente en tu navegador — nunca se suben a ningún lugar.
               </p>
               <DropZone />
             </div>
@@ -134,10 +134,10 @@ export default function Editor() {
       {file && (
         <div className={styles.statusBar}>
           <span className={styles.statusFile}>📄 {fileName}</span>
-          <span className={styles.statusCenter}>Page {currentPage} of {pageCount}</span>
+          <span className={styles.statusCenter}>Página {currentPage} de {pageCount}</span>
           <span className={styles.statusRight}>
             <span className={styles.privacyDot} />
-            <span className={styles.statusRightText}>Processed locally — never uploaded</span>
+            <span className={styles.statusRightText}>Derechos reservados por PDFBlack(Aicrag)</span>
           </span>
         </div>
       )}

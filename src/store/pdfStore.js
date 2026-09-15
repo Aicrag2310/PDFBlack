@@ -38,22 +38,32 @@ export const usePdfStore = create((set, get) => ({
   blockBgs: {},
   activeTool: "select",
 
+  activeShape: "rect",        // 'rect', 'circle', 'line'
+  brushSize: 5,               // Grosor del pincel por defecto
+  brushColor: "#e84545",      // Color rojo por defecto para dibujar/formas
+  brushType: "solid",
+
+  setActiveShape: (shape) => set({ activeShape: shape }),
+  setBrushSize: (size) => set({ brushSize: Number(size) }),
+  setBrushColor: (color) => set({ brushColor: color }),
+  setBrushType: (type) => set({ brushType: type }),
+
   // Mobile drawer visibility — Pages (left) and Properties (right) panels
   // become slide-in overlays below a 768px breakpoint. Only one open at a time.
   mobilePagesOpen: false,
   mobilePropertiesOpen: false,
 
-  setFile:           (file, fileName, fileSize) => set({ file, fileName, fileSize }),
-  setPageCount:      (pageCount)   => set({ pageCount }),
-  setCurrentPage:    (p)           => set({ currentPage: p, selectedElement: null, selectedElementPage: null }),
-  setZoom:           (z)           => set({ zoom: Math.max(0.25, Math.min(3.0, Math.round(z * 100) / 100)) }),
-  setActiveTool:     (t)           => set({ activeTool: t, selectedElement: null, selectedElementPage: null }),
+  setFile: (file, fileName, fileSize) => set({ file, fileName, fileSize }),
+  setPageCount: (pageCount) => set({ pageCount }),
+  setCurrentPage: (p) => set({ currentPage: p, selectedElement: null, selectedElementPage: null }),
+  setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3.0, Math.round(z * 100) / 100)) }),
+  setActiveTool: (t) => set({ activeTool: t, selectedElement: null, selectedElementPage: null }),
   setPageBg: (pageNum, bg) => set(s => ({ pageBgs: { ...s.pageBgs, [pageNum]: bg } })),
   // Bulk-merge per-block local backgrounds for one page in a single update
   setBlockBgs: (pageNum, bgMap) => set(s => ({
     blockBgs: { ...s.blockBgs, [pageNum]: { ...(s.blockBgs[pageNum] || {}), ...bgMap } }
   })),
-  setSelectedElement:(el, page)    => set({ selectedElement: el, selectedElementPage: page }),
+  setSelectedElement: (el, page) => set({ selectedElement: el, selectedElementPage: page }),
 
   setMobilePagesOpen: (open) => set({
     mobilePagesOpen: open,
@@ -132,31 +142,31 @@ export const usePdfStore = create((set, get) => ({
     // All original style info preserved — only str changes
     const editedBlock = {
       // Position & size from original
-      x:          originalBlock.x,
-      y:          originalBlock.y,
-      width:      originalBlock.width,
-      height:     originalBlock.height,
+      x: originalBlock.x,
+      y: originalBlock.y,
+      width: originalBlock.width,
+      height: originalBlock.height,
       // Font metadata — critical for export
-      fontSize:   originalBlock.fontSize,
-      fontName:   originalBlock.fontName,
+      fontSize: originalBlock.fontSize,
+      fontName: originalBlock.fontName,
       fontFamily: originalBlock.fontFamily,
-      fontBold:   originalBlock.fontBold,
+      fontBold: originalBlock.fontBold,
       fontItalic: originalBlock.fontItalic,
       fontUnderline: originalBlock.fontUnderline,
-      stdFont:    originalBlock.stdFont,
+      stdFont: originalBlock.stdFont,
       baselineOffset: originalBlock.baselineOffset,
-      ascent:     originalBlock.ascent,
-      descent:    originalBlock.descent,
-      scaleX:     originalBlock.scaleX,
-      scaleY:     originalBlock.scaleY,
-      rotation:   originalBlock.rotation || 0,
+      ascent: originalBlock.ascent,
+      descent: originalBlock.descent,
+      scaleX: originalBlock.scaleX,
+      scaleY: originalBlock.scaleY,
+      rotation: originalBlock.rotation || 0,
       lineHeight: originalBlock.lineHeight,
-      editBox:    originalBlock.editBox,
-      glyphs:     originalBlock.glyphs,
-      kerning:    originalBlock.kerning,
+      editBox: originalBlock.editBox,
+      glyphs: originalBlock.glyphs,
+      kerning: originalBlock.kerning,
       kerningSource: originalBlock.kerningSource,
       // Color from original
-      color:      originalBlock.color || '#000000',
+      color: originalBlock.color || '#000000',
       colorSpace: originalBlock.colorSpace || 'DeviceRGB',
       fillOpacity: originalBlock.fillOpacity ?? 1,
       textRenderingMode: originalBlock.textRenderingMode ?? 0,
@@ -169,17 +179,17 @@ export const usePdfStore = create((set, get) => ({
       fontWeight: originalBlock.fontWeight,
       fontStyle: originalBlock.fontStyle,
       // Edited string
-      str:        newStr,
+      str: newStr,
       // Flags
-      id:         editId,
+      id: editId,
       originalId: originalBlock.id,
       originalStr: originalBlock.str,
-      isEdited:   true,
-      isExtracted:false,
+      isEdited: true,
+      isExtracted: false,
       // Preserve children info for multi-fragment whiteout
-      children:   originalBlock.children,
-      originalX:  originalBlock.x,
-      originalY:  originalBlock.y,
+      children: originalBlock.children,
+      originalX: originalBlock.x,
+      originalY: originalBlock.y,
       originalWidth: originalBlock.width,
       originalHeight: originalBlock.height,
       originalFontSize: originalBlock.fontSize,
@@ -194,22 +204,22 @@ export const usePdfStore = create((set, get) => ({
     const existing = layer.texts.find(t => t.id === editId)
     const nextEditedBlock = existing
       ? {
-          ...existing,
-          str: newStr,
-          originalX: existing.originalX ?? originalBlock.x,
-          originalY: existing.originalY ?? originalBlock.y,
-          originalWidth: existing.originalWidth ?? originalBlock.width,
-          originalHeight: existing.originalHeight ?? originalBlock.height,
-          originalFontSize: existing.originalFontSize ?? originalBlock.fontSize,
-          originalBaselineOffset: existing.originalBaselineOffset ?? originalBlock.baselineOffset,
-          originalLineHeight: existing.originalLineHeight ?? originalBlock.lineHeight,
-          maxEditWidth: existing.maxEditWidth ?? originalBlock.maxEditWidth ?? originalBlock.width,
-          maxEditHeight: existing.maxEditHeight ?? originalBlock.maxEditHeight ?? originalBlock.height,
-          editBox: existing.editBox ?? originalBlock.editBox,
-          glyphs: existing.glyphs ?? originalBlock.glyphs,
-          kerning: existing.kerning ?? originalBlock.kerning,
-          fontResource: existing.fontResource ?? originalBlock.fontResource,
-        }
+        ...existing,
+        str: newStr,
+        originalX: existing.originalX ?? originalBlock.x,
+        originalY: existing.originalY ?? originalBlock.y,
+        originalWidth: existing.originalWidth ?? originalBlock.width,
+        originalHeight: existing.originalHeight ?? originalBlock.height,
+        originalFontSize: existing.originalFontSize ?? originalBlock.fontSize,
+        originalBaselineOffset: existing.originalBaselineOffset ?? originalBlock.baselineOffset,
+        originalLineHeight: existing.originalLineHeight ?? originalBlock.lineHeight,
+        maxEditWidth: existing.maxEditWidth ?? originalBlock.maxEditWidth ?? originalBlock.width,
+        maxEditHeight: existing.maxEditHeight ?? originalBlock.maxEditHeight ?? originalBlock.height,
+        editBox: existing.editBox ?? originalBlock.editBox,
+        glyphs: existing.glyphs ?? originalBlock.glyphs,
+        kerning: existing.kerning ?? originalBlock.kerning,
+        fontResource: existing.fontResource ?? originalBlock.fontResource,
+      }
       : editedBlock
     const newTexts = existing
       ? layer.texts.map(t => t.id === editId ? nextEditedBlock : t)
@@ -276,6 +286,103 @@ export const usePdfStore = create((set, get) => ({
     })
     return didRedo
   },
+
+  addImage: (pageNum, imageBlock) => set((s) => {
+    // Asegurarnos de que la capa tenga un arreglo de images
+    const layer = s.editLayers[pageNum] || { texts: [], annotations: [], images: [] }
+    const currentImages = layer.images || []
+
+    return {
+      ...pushHistory(s),
+      editLayers: {
+        ...s.editLayers,
+        [pageNum]: { ...layer, images: [...currentImages, imageBlock] },
+      },
+      // Seleccionamos la imagen automáticamente al crearla para poder moverla
+      selectedElement: imageBlock,
+      selectedElementPage: pageNum,
+    }
+  }),
+
+  updateImage: (pageNum, id, updates) => set((s) => {
+    const layer = s.editLayers[pageNum]
+    if (!layer || !layer.images) return {}
+
+    const existing = layer.images.find(img => img.id === id)
+    if (!existing) return {}
+
+    const updated = { ...existing, ...updates }
+
+    return {
+      ...pushHistory(s),
+      editLayers: {
+        ...s.editLayers,
+        [pageNum]: {
+          ...layer,
+          images: layer.images.map(img => img.id === id ? updated : img),
+        },
+      },
+      // Actualizar el elemento seleccionado si es el que estamos moviendo
+      ...(s.selectedElement?.id === id && s.selectedElementPage === pageNum
+        ? { selectedElement: updated }
+        : {}),
+    }
+  }),
+
+  removeImage: (pageNum, id) => set((s) => {
+    const layer = s.editLayers[pageNum]
+    if (!layer || !layer.images) return {}
+
+    return {
+      ...pushHistory(s),
+      editLayers: {
+        ...s.editLayers,
+        [pageNum]: { ...layer, images: layer.images.filter(img => img.id !== id) },
+      },
+      ...(s.selectedElement?.id === id && s.selectedElementPage === pageNum
+        ? { selectedElement: null, selectedElementPage: null }
+        : {}),
+    }
+  }),
+
+  updateAnnotation: (pageNum, id, updates) => set((s) => {
+    const layer = s.editLayers[pageNum]
+    if (!layer || !layer.annotations) return {}
+
+    const existing = layer.annotations.find(a => a.id === id)
+    if (!existing) return {}
+    const updated = { ...existing, ...updates }
+
+    return {
+      ...pushHistory(s),
+      editLayers: {
+        ...s.editLayers,
+        [pageNum]: {
+          ...layer,
+          annotations: layer.annotations.map(a => a.id === id ? updated : a),
+        },
+      },
+      // Si la anotación que estamos moviendo está seleccionada, actualizamos el panel
+      ...(s.selectedElement?.id === id ? { selectedElement: updated } : {}),
+    }
+  }),
+
+  removeAnnotation: (pageNum, id) => set((s) => {
+    const layer = s.editLayers[pageNum]
+    if (!layer || !layer.annotations) return {}
+
+    return {
+      ...pushHistory(s),
+      editLayers: {
+        ...s.editLayers,
+        [pageNum]: {
+          ...layer,
+          annotations: layer.annotations.filter(a => a.id !== id)
+        },
+      },
+      ...(s.selectedElement?.id === id ? { selectedElement: null, selectedElementPage: null } : {}),
+    }
+  }),
 
   reset: () => set({
     file: null, fileName: '', fileSize: 0, pageCount: 0, currentPage: 1,

@@ -1,8 +1,9 @@
 import React from 'react'
-import { FileText, Layers, Info, Lock, Droplets, EyeOff, Palette } from 'lucide-react'
+import { FileText, Layers, Info, Lock, Droplets, EyeOff, Palette, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePdfStore } from '../../store/pdfStore.js'
-import { addWatermark, downloadBytes } from '../../lib/pdfExporter.js'
+import { addWatermark, downloadBytes, decryptPdf } from '../../lib/pdfExporter.js'
+import { convertToWord, convertToExcel, convertToImages } from '../../lib/converters.js'
 import styles from './PropertiesPanel.module.css'
 
 export default function PropertiesPanel() {
@@ -33,9 +34,9 @@ export default function PropertiesPanel() {
 
   const handleWatermark = async () => {
     if (!file) return
-    const text = window.prompt('Watermark text:', 'CONFIDENTIAL')
+    const text = window.prompt('Texto de la marca de agua:', 'CONFIDENCIAL')
     if (!text) return
-    const tid = toast.loading('Adding watermark...')
+    const tid = toast.loading('Agregando marca de agua...')
     try {
       const bytes = await addWatermark(file, text)
       downloadBytes(bytes, `watermarked-${fileName}`)
@@ -53,6 +54,56 @@ export default function PropertiesPanel() {
       .slice(0, 22)
   }
 
+  const handleConvertToWord = async () => {
+    if (!file) return
+    const tid = toast.loading('Convirtiendo a Word...')
+    try {
+      await convertToWord(file, fileName || 'documento.pdf')
+      toast.success('¡Word descargado!', { id: tid })
+    } catch (e) {
+      toast.error('Error al convertir', { id: tid })
+      console.error(e)
+    }
+  }
+
+  const handleConvertToExcel = async () => {
+    if (!file) return
+    const tid = toast.loading('Convirtiendo a Excel...')
+    try {
+      await convertToExcel(file, fileName || 'documento.pdf')
+      toast.success('¡Excel descargado!', { id: tid })
+    } catch (e) {
+      toast.error('Error al convertir', { id: tid })
+    }
+  }
+
+  const handleConvertToImages = async () => {
+    if (!file) return
+    const tid = toast.loading('Generando imágenes ZIP...')
+    try {
+      await convertToImages(file, fileName || 'documento.pdf')
+      toast.success('¡ZIP descargado!', { id: tid })
+    } catch (e) {
+      toast.error('Error al convertir', { id: tid })
+    }
+  }
+
+  const handleDecrypt = async () => {
+    if (!file) return
+    const password = window.prompt('Ingresa la contraseña actual del PDF para desbloquearlo:')
+    if (!password) return // Si el usuario cancela, no hacemos nada
+
+    const tid = toast.loading('Quitando contraseña...')
+    try {
+      const bytes = await decryptPdf(file, password)
+      downloadBytes(bytes, `desbloqueado-${fileName}`)
+      toast.success('¡PDF desencriptado con éxito!', { id: tid })
+    } catch (e) {
+      toast.error('Error: Contraseña incorrecta', { id: tid })
+      console.error(e)
+    }
+  }
+
   return (
     <div className={styles.panel}>
 
@@ -67,7 +118,7 @@ export default function PropertiesPanel() {
       {/* Selection properties — only when something is selected */}
       {selectedElement ? (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}><Layers size={12} /> Selection</div>
+          <div className={styles.sectionTitle}><Layers size={12} /> Selección</div>
 
           {/* Detected font badge */}
           <div className={styles.detectedFont}>
@@ -135,36 +186,40 @@ export default function PropertiesPanel() {
         </div>
       ) : (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}><Layers size={12} /> Selection</div>
+          <div className={styles.sectionTitle}><Layers size={12} /> Selección</div>
           <div className={styles.emptyHint}>
-            Click any text in the PDF to select it, then double-click to edit
+            Haz clic en cualquier texto del PDF para seleccionarlo y, luego, haz doble clic para editarlo
           </div>
         </div>
       )}
 
       {/* Actions */}
       <div className={styles.section}>
-        <div className={styles.sectionTitle}><FileText size={12} /> Actions</div>
+        <div className={styles.sectionTitle}><FileText size={12} /> Acciones</div>
         <div className={styles.actionList}>
           <button className={styles.actionBtn} onClick={handleWatermark}>
-            <Droplets size={13} /> Add watermark
+            <Droplets size={13} /> Agregar marca de agua
           </button>
-          <button className={styles.actionBtn} onClick={() => toast('Switch to Redact tool in toolbar, then drag over content', { icon: '🔲' })}>
-            <EyeOff size={13} /> Redact content
-          </button>
-          <button className={styles.actionBtn} onClick={() => toast('Password protection — use the Tools page', { icon: '🔒' })}>
-            <Lock size={13} /> Password protect
+
+          <button className={styles.actionBtn} onClick={handleDecrypt}>
+            <Unlock size={13} /> Quitar contraseña
           </button>
         </div>
       </div>
 
       {/* Export as */}
       <div className={styles.section}>
-        <div className={styles.sectionTitle}>Export as</div>
+        <div className={styles.sectionTitle}>Convertir a</div>
         <div className={styles.actionList}>
-          <button className={styles.actionBtn} onClick={() => toast('DOCX export — v1.1', { icon: '📄' })}>📄 Word (.docx)</button>
-          <button className={styles.actionBtn} onClick={() => toast('Image export — v1.1', { icon: '🖼' })}>🖼 Images (PNG)</button>
-          <button className={styles.actionBtn} onClick={() => toast('Plain text export — v1.1', { icon: '📋' })}>📋 Plain text</button>
+          <button className={styles.actionBtn} onClick={handleConvertToWord}>
+            📄 Word (.docx)
+          </button>
+          <button className={styles.actionBtn} onClick={handleConvertToExcel}>
+            📊 Excel (.xlsx)
+          </button>
+          <button className={styles.actionBtn} onClick={handleConvertToImages}>
+            🖼 Imágenes ZIP (.png)
+          </button>
         </div>
       </div>
 

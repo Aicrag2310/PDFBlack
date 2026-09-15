@@ -20,7 +20,7 @@ export default function DropZone({ compact = false }) {
     const file = accepted[0]
     const arrayBuffer = await file.arrayBuffer()
     setFile(arrayBuffer, file.name, file.size)
-    toast.success(`Loaded ${file.name}`)
+    toast.success(`Cargado ${file.name}`)
     navigate('/editor')
   }, [setFile, navigate])
 
@@ -35,7 +35,7 @@ export default function DropZone({ compact = false }) {
       <div {...getRootProps()} className={`${styles.compact} ${isDragActive ? styles.dragging : ''}`}>
         <input {...getInputProps()} />
         <Upload size={16} />
-        <span>Open PDF</span>
+        <span>Abre un PDF</span>
       </div>
     )
   }
@@ -47,18 +47,17 @@ export default function DropZone({ compact = false }) {
         {isDragActive ? <FileText size={36} /> : <Upload size={36} />}
       </div>
       <div className={styles.title}>
-        {isDragActive ? 'Drop to open' : 'Drop your PDF here'}
+        {isDragActive ? 'Arrastra para abrir un PDF' : 'Sube tu PDF aquí'}
       </div>
       <div className={styles.sub}>
-        or <span className={styles.browse}>click to browse</span>
+        O <span className={styles.browse}>Haz clic para explorar</span>
       </div>
       <div className={styles.note}>
         <AlertCircle size={12} />
-        Files are processed entirely in your browser — never uploaded anywhere
+        Los archivos se procesan íntegramente en tu navegador; nunca se suben a ningún sitio
       </div>
       <div className={styles.formats}>
         <span>PDF</span>
-        <span>Scanned PDF</span>
         <span>PDF/A</span>
         <span>PDF forms</span>
       </div>
