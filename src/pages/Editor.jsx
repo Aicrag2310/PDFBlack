@@ -10,6 +10,7 @@ import PdfCanvas from '../components/editor/PdfCanvas.jsx'
 import PropertiesPanel from '../components/editor/PropertiesPanel.jsx'
 import DropZone from '../components/ui/DropZone.jsx'
 import styles from './Editor.module.css'
+const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 export default function Editor() {
   const {
@@ -20,6 +21,44 @@ export default function Editor() {
   } = usePdfStore()
   // pdfReady gates PdfCanvas — only render after loadPdf() fully resolves
   const [pdfReady, setPdfReady] = useState(false)
+
+  // 📂 ESCUCHAR SI WINDOWS ABRE UN PDF DIRECTAMENTE CON LA APP
+  useEffect(() => {
+    if (!ipcRenderer) return
+
+    const handleOpenPdfFromOS = async (event, filePath) => {
+      try {
+        console.log('Abriendo PDF desde el sistema operativo:', filePath)
+        
+        const fs = window.require ? window.require('fs') : null
+        if (!fs) throw new Error('Módulo fs no disponible')
+
+        // 1. Leer el archivo como Buffer de Node
+        const buffer = fs.readFileSync(filePath)
+        
+        // 2. Convertir el Buffer exactamente a ArrayBuffer limpio (igual que DropZone)
+        const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+        
+        // 3. Extraer el nombre del archivo
+        const fileName = filePath.split('\\').pop().split('/').pop()
+
+        // 4. Llamar a setFile exactamente igual que lo hace tu DropZone (arrayBuffer, name, size)
+        const { setFile } = usePdfStore.getState()
+        setFile(arrayBuffer, fileName, buffer.length)
+        
+        toast.success(`Abierto: ${fileName}`)
+      } catch (error) {
+        console.error('Error al abrir el PDF del sistema:', error)
+        toast.error('No se pudo abrir el archivo desde el sistema')
+      }
+    }
+
+    ipcRenderer.on('open-pdf-from-os', handleOpenPdfFromOS)
+
+    return () => {
+      ipcRenderer.removeAllListeners('open-pdf-from-os')
+    }
+  }, [])
 
   useEffect(() => {
     if (!file) { setPdfReady(false); return }

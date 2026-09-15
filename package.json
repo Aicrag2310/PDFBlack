@@ -1,6 +1,6 @@
 {
   "name": "aicrag-pdf",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "description": "Aicrag PDF — Editor de PDF gratuito y de código abierto.",
   "author": "Aicrag",
@@ -78,6 +78,14 @@
         }
       ]
     },
+    "fileAssociations": [
+      {
+        "name": "Documento PDF",
+        "description": "Archivos PDF compatibles con PDFBlack",
+        "ext": "pdf",
+        "role": "Editor"
+      }
+    ],
 
     "nsis": {
       "oneClick": false,

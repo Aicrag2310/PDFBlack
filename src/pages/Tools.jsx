@@ -6,7 +6,7 @@ import {
   Scissors, Merge, FileDown, RotateCcw, ScanLine, Lock,
   Unlock, Droplets, EyeOff, Edit3, FileSearch, Layers,
   ChevronRight, Upload, FileText, X, Loader2, RotateCw, Image as ImageIcon,
-  GripVertical, Check, ArrowLeft
+  GripVertical, Check, ArrowLeft, Trash2
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar.jsx'
 import {
@@ -21,7 +21,7 @@ import { convertToWord, convertToExcel, convertToImages } from '../lib/converter
 
 /* ─────────────────── shared helpers ─────────────────── */
 
-function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastra el PDF aquí o haz clic para buscarlo' }) {
+function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastra tu PDF aquí o haz clic para explorar' }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: multiple ? undefined : 1,
@@ -32,11 +32,24 @@ function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastr
 
   if (!multiple && file) {
     return (
-      <div className={styles.fileChip}>
-        <FileText size={15} />
-        <span className={styles.fileName}>{file.name}</span>
-        <span className={styles.fileSize}>{(file.size / 1024).toFixed(0)} KB</span>
-        <button className={styles.removeBtn} onClick={onClear}><X size={13} /></button>
+      <div className={styles.fileCardSelected}>
+        <div className={styles.fileInfoWrapper}>
+          <div className={styles.fileIconBox}>
+            <FileText size={22} className={styles.pdfIconColor} />
+          </div>
+          <div className={styles.fileMeta}>
+            <span className={styles.fileName}>{file.name}</span>
+            <span className={styles.fileSize}>{(file.size / 1024).toFixed(0)} KB • PDF</span>
+          </div>
+        </div>
+        <button 
+          className={styles.removeBtnTrash} 
+          onClick={onClear} 
+          title="Eliminar archivo"
+          type="button"
+        >
+          <Trash2 size={16} />
+        </button>
       </div>
     )
   }
@@ -44,8 +57,13 @@ function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastr
   return (
     <div {...getRootProps()} className={`${styles.dropArea} ${isDragActive ? styles.dropActive : ''}`}>
       <input {...getInputProps()} />
-      <Upload size={28} />
-      <span>{isDragActive ? 'Drop it!' : label}</span>
+      <div className={styles.dropContent}>
+        <div className={styles.uploadIconCircle}>
+          <Upload size={22} />
+        </div>
+        <span className={styles.dropLabel}>{isDragActive ? 'Suelta el archivo aquí...' : label}</span>
+        <span className={styles.dropHint}>Soporta archivos PDF en alta calidad</span>
+      </div>
     </div>
   )
 }

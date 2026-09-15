@@ -5,6 +5,124 @@
   overflow: hidden;
 }
 
+/* Tarjeta de archivo seleccionado */
+.fileCardSelected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 18px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.fileCardSelected:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.fileInfoWrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.fileIconBox {
+  background: rgba(232, 69, 69, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e84545;
+}
+
+.fileMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.fileName {
+  font-weight: 500;
+  font-size: 14px;
+  color: #f0f0f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: #888892;
+}
+
+/* Botón de basura */
+.removeBtnTrash {
+  background: transparent;
+  border: none;
+  color: #888892;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.removeBtnTrash:hover {
+  background: rgba(232, 69, 69, 0.15);
+  color: #e84545;
+}
+
+/* Área de arrastre (Dropzone) */
+.dropArea {
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.01);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropArea:hover, .dropActive {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.dropContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.uploadIconCircle {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  padding: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #f0f0f4;
+}
+
+.dropHint {
+  font-size: 12px;
+  color: #666670;
+}
+
 .layout {
   display: flex;
   flex: 1;
@@ -755,4 +873,5 @@
   .inlineControlRow {
     grid-template-columns: 1fr;
   }
+  
 }

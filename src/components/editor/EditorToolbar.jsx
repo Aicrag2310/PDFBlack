@@ -428,7 +428,7 @@ export default function EditorToolbar() {
       </button>
 
       <button className={styles.exportBtn} onClick={handleExport} disabled={!file}>
-        <Download size={14} /> Descargar PDasdsF
+        <Download size={14} /> Descargar PDF
       </button>
     </div>
   )

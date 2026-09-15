@@ -1,7 +1,47 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { FileText, Github, Star, Zap } from 'lucide-react'
+import { FileText, Sun, Moon } from 'lucide-react'
 import styles from './Navbar.module.css'
+
+// Componente interno para alternar tema Claro/Oscuro
+function ThemeToggle() {
+  const [theme, setTheme] = React.useState(() => {
+    return localStorage.getItem('pdfzero-theme') || 'dark'
+  })
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('pdfzero-theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
+  }
+
+  return (
+    <button
+      onClick={toggleTheme}
+      title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--brd-2)',
+        color: 'var(--tx-1)',
+        padding: '6px 10px',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        fontSize: '13px',
+        fontWeight: 500
+      }}
+    >
+      {theme === 'dark' ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#3b82f6" />}
+      <span>{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
+    </button>
+  )
+}
 
 export default function Navbar({ variant = 'app' }) {
   const location = useLocation()
@@ -27,6 +67,11 @@ export default function Navbar({ variant = 'app' }) {
             </Link>
           </div>
         )}
+      </div>
+
+      {/* Lado derecho del Navbar con el botón de tema */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <ThemeToggle />
       </div>
     </nav>
   )
