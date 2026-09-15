@@ -6,6 +6,7 @@ import { Analytics } from '@vercel/analytics/react'
 import Landing from './pages/Landing.jsx'
 import Editor from './pages/Editor.jsx'
 import Tools from './pages/Tools.jsx'
+import UpdateModal from './components/UpdateModal.jsx'
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
       />
 
       <Analytics />
+       <UpdateModal />
     </HashRouter>
   )
 }

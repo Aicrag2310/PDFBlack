@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import pkg from 'electron-updater'
@@ -8,8 +8,10 @@ const { autoUpdater } = pkg
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+let mainWindow = null
+
 function createWindow() {
-    const win = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 1280,
         height: 800,
         minWidth: 1000,
@@ -22,99 +24,170 @@ function createWindow() {
         },
     })
 
-    win.maximize()
+    mainWindow.maximize()
 
     if (process.env.VITE_DEV_SERVER_URL) {
         console.log('Modo desarrollo')
-        win.loadURL(process.env.VITE_DEV_SERVER_URL)
+        console.log('Vite URL:', process.env.VITE_DEV_SERVER_URL)
+
+        mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
     } else {
         const indexPath = path.join(__dirname, '../dist/index.html')
+
         console.log('Modo producción')
         console.log('Cargando:', indexPath)
-        win.loadFile(indexPath)
+
+        mainWindow.loadFile(indexPath)
     }
 
 }
 
-
-// ========================================
-// AUTO-UPDATER
-// ========================================
+/*
+|--------------------------------------------------------------------------
+| AUTO-UPDATER
+|--------------------------------------------------------------------------
+*/
 
 autoUpdater.on('checking-for-update', () => {
-    console.log('Buscando actualizaciones...')
+    console.log('================================')
+    console.log('COMPROBANDO ACTUALIZACIONES')
+    console.log(`Versión instalada: ${app.getVersion()}`)
+    console.log('================================')
+
+    if (mainWindow) {
+        mainWindow.webContents.send('update-checking')
+    }
 })
+
 
 autoUpdater.on('update-available', (info) => {
-    console.log('NUEVA ACTUALIZACIÓN:', info.version)
+    console.log('================================')
+    console.log('NUEVA ACTUALIZACIÓN')
+    console.log(`Versión: ${info.version}`)
+    console.log('================================')
 
-    dialog.showMessageBox({
-        type: 'info',
-        title: 'Aicrag PDF',
-        message: `Hay una nueva versión disponible: ${info.version}`,
-        detail: 'La actualización se descargará automáticamente.'
-    })
+    if (mainWindow) {
+        mainWindow.webContents.send('update-available', {
+            version: info.version,
+            releaseNotes: info.releaseNotes || '',
+            releaseDate: info.releaseDate || '',
+        })
+    }
 })
+
 
 autoUpdater.on('update-not-available', (info) => {
-    console.log('No hay actualizaciones.')
-    console.log('Versión actual:', app.getVersion())
-    console.log('Versión remota:', info.version)
+    console.log('No hay actualizaciones disponibles.')
 
-    dialog.showMessageBox({
-        type: 'info',
-        title: 'Aicrag PDF',
-        message: 'No hay actualizaciones disponibles.',
-        detail: `Versión instalada: ${app.getVersion()}`
-    })
+    if (mainWindow) {
+        mainWindow.webContents.send('update-not-available', {
+            version: info.version,
+        })
+    }
 })
+
+
+autoUpdater.on('download-progress', (progress) => {
+    const percent = Math.round(progress.percent)
+
+    console.log(
+        `Descargando actualización: ${percent}%`
+    )
+
+    if (mainWindow) {
+        mainWindow.webContents.send('update-progress', {
+            percent,
+            transferred: progress.transferred,
+            total: progress.total,
+            bytesPerSecond: progress.bytesPerSecond,
+        })
+    }
+})
+
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('================================')
+    console.log('ACTUALIZACIÓN DESCARGADA')
+    console.log(`Versión: ${info.version}`)
+    console.log('================================')
+
+    if (mainWindow) {
+        mainWindow.webContents.send('update-downloaded', {
+            version: info.version,
+            releaseNotes: info.releaseNotes || '',
+        })
+    }
+})
+
 
 autoUpdater.on('error', (error) => {
     console.error('ERROR AUTO-UPDATER:', error)
 
-    dialog.showErrorBox(
-        'Error del actualizador',
-        error?.message || String(error)
-    )
-})
-
-autoUpdater.on('download-progress', (progress) => {
-    console.log(
-        `Descargando actualización: ${Math.round(progress.percent)}%`
-    )
-})
-
-autoUpdater.on('update-downloaded', (info) => {
-    console.log('Actualización descargada:', info.version)
-
-    dialog.showMessageBox({
-        type: 'info',
-        title: 'Aicrag PDF',
-        message: `La versión ${info.version} está lista.`,
-        detail: 'La actualización se instalará al cerrar la aplicación.'
-    })
+    if (mainWindow) {
+        mainWindow.webContents.send('update-error', {
+            message: error?.message || 'Error desconocido al actualizar.',
+        })
+    }
 })
 
 
-// ========================================
-// ELECTRON
-// ========================================
+/*
+|--------------------------------------------------------------------------
+| IPC - ACCIONES DEL USUARIO
+|--------------------------------------------------------------------------
+*/
+
+ipcMain.handle('update-download', async () => {
+    console.log('Usuario aceptó descargar la actualización.')
+
+    try {
+        await autoUpdater.downloadUpdate()
+
+        return {
+            success: true,
+        }
+    } catch (error) {
+        console.error(
+            'Error al descargar actualización:',
+            error
+        )
+
+        return {
+            success: false,
+            error: error?.message || 'No se pudo descargar la actualización.',
+        }
+    }
+})
+
+
+ipcMain.handle('update-install', () => {
+    console.log('Instalando actualización...')
+
+    autoUpdater.quitAndInstall()
+
+    return {
+        success: true,
+    }
+})
+
+
+/*
+|--------------------------------------------------------------------------
+| APP
+|--------------------------------------------------------------------------
+*/
 
 app.whenReady().then(() => {
-    console.log('VERSION DE ELECTRON:', app.getVersion())
     createWindow()
 
     setTimeout(() => {
         if (!process.env.VITE_DEV_SERVER_URL) {
-
-            console.log('================================')
-            console.log('COMPROBANDO ACTUALIZACIONES')
-            console.log('Versión instalada:', app.getVersion())
-            console.log('================================')
+            console.log('Iniciando comprobación de actualizaciones...')
 
             autoUpdater.checkForUpdates()
         }
     }, 3000)
+
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -122,6 +195,7 @@ app.whenReady().then(() => {
         }
     })
 })
+
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
