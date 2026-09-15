@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { autoUpdater } from 'electron-updater'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -14,7 +15,6 @@ function createWindow() {
         }
     })
 
-    // 👇 ESTA LÍNEA HACE QUE SE ABRA MAXIMIZADA 👇
     win.maximize()
 
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -22,6 +22,13 @@ function createWindow() {
     } else {
         win.loadFile(path.join(__dirname, '../dist/index.html'))
     }
+
+    // Comprobar actualizaciones cuando la ventana esté lista (en producción)
+    win.once('ready-to-show', () => {
+        if (!process.env.VITE_DEV_SERVER_URL) {
+            autoUpdater.checkForUpdatesAndNotify()
+        }
+    })
 }
 
 app.whenReady().then(createWindow)
@@ -30,4 +37,8 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
+})
+
+autoUpdater.on('update-downloaded', () => {
+    autoUpdater.quitAndInstall()
 })

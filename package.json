@@ -15,11 +15,18 @@
   "build": {
     "appId": "com.aicrag.pdfzero",
     "productName": "PDFZero",
-    "directories": {
-      "output": "dist-electron"
-    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Aicrag2310",
+        "repo": "PDFBlack"
+      }
+    ],
     "win": {
       "target": "nsis"
+    },
+    "directories": {
+      "output": "dist-electron"
     },
     "files": [
       "dist/**/*",
