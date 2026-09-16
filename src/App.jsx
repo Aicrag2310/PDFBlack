@@ -28,11 +28,25 @@ export default function App() {
         />
       </Routes>
 
-      <Toaster
-        position="top-right"
+      <Toaster 
+        position="top-center" /* 👈 Las mueve al centro de la pantalla, arriba */
         toastOptions={{
-          duration: 3000,
-        }}
+          duration: 2500, /* 👈 Se ocultan solas más rápido (2.5 segundos) */
+          style: {
+            background: 'var(--bg-card, #18181b)',
+            color: 'var(--tx-1, #fff)',
+            borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            fontSize: '14px',
+          },
+          success: {
+            duration: 2500,
+          },
+          error: {
+            duration: 3500, /* Los errores duran un segundo más para que alcances a leerlos */
+          }
+        }} 
       />
 
       <Analytics />

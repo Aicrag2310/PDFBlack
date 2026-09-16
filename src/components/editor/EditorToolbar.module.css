@@ -181,3 +181,108 @@
   .exportBtn { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
   .zoomLabel { min-width: 34px; font-size: 11px; }
 }
+
+
+/* =========================================
+   ISLA FLOTANTE DE BÚSQUEDA (ESTILO PREMIUM / MAC / LINEAR)
+========================================= */
+.floatingSearch {
+  position: absolute;
+  top: 75px; /* Ajusta esto dependiendo de qué tan abajo la quieras */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card, rgba(24, 24, 27, 0.85)); /* Usa tus variables o un gris elegante */
+  backdrop-filter: blur(20px); /* Efecto cristal / vidrio esmerilado */
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--brd-2, rgba(255, 255, 255, 0.1));
+  padding: 8px 16px;
+  border-radius: 14px; /* Bordes suaves tipo Apple */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+  box-shadow: 
+    0 16px 40px rgba(0, 0, 0, 0.25), 
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  /* Animación suave de entrada */
+  animation: slideDownGlass 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownGlass {
+  0% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.searchIcon {
+  color: var(--blue, #3b82f6);
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4)); /* Ligeramente brillante */
+}
+
+.floatingSearch input {
+  background: transparent;
+  border: none;
+  color: var(--tx-1, #f3f4f6);
+  font-size: 14px;
+  width: 280px;
+  outline: none;
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+}
+
+.floatingSearch input::placeholder {
+  color: var(--tx-3, rgba(255, 255, 255, 0.4));
+}
+
+.matchCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tx-2, rgba(255, 255, 255, 0.7));
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums; /* Evita que el texto baile al cambiar números */
+}
+
+.searchNavFloat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--brd-2, rgba(255, 255, 255, 0.1));
+}
+
+.searchNavFloat button {
+  background: transparent;
+  border: none;
+  color: var(--tx-2, rgba(255, 255, 255, 0.7));
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.searchNavFloat button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--tx-1, #ffffff);
+}
+
+.searchNavFloat button:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* Efecto especial para el botón de cerrar */
+.closeBtnFloat {
+  color: var(--tx-3, rgba(255, 255, 255, 0.5)) !important;
+  margin-left: 4px;
+}
+.closeBtnFloat:hover {
+  background: rgba(239, 68, 68, 0.15) !important; /* Fondo rojizo suave */
+  color: #ef4444 !important; /* Rojo vivo */
+}

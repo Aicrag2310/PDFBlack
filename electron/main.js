@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import pkg from 'electron-updater'
+import fs from 'fs'
 
 const { autoUpdater } = pkg
 
@@ -47,7 +48,7 @@ function createWindow() {
     })
 
     mainWindow.maximize()
-    mainWindow.webContents.openDevTools()
+
     // 📂 1. Capturar la ruta del PDF de forma robusta al iniciar (con comillas limpias)
     let fileToOpen = null
     if (process.platform === 'win32') {
@@ -77,10 +78,51 @@ function createWindow() {
         }
     })
 
+    // 🚪 ÚNICO INTERCEPTOR DE CIERRE: Le pregunta a React si hay cambios
+    mainWindow.on('close', (e) => {
+        e.preventDefault()
+        mainWindow.webContents.send('request-close-status')
+    })
+
     mainWindow.on('closed', () => {
         mainWindow = null
     })
 }
+
+/*
+|--------------------------------------------------------------------------
+| ACCIONES DE CIERRE DESDE EL RENDERER (REACT)
+|--------------------------------------------------------------------------
+*/
+
+ipcMain.on('force-close-app', () => {
+    if (mainWindow) {
+        mainWindow.removeAllListeners('close')
+        mainWindow.close()
+    }
+})
+
+ipcMain.on('show-save-dialog', async () => {
+    const choice = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        buttons: ['Cancelar', 'Guardar PDF', 'Salir sin guardar'], // 0=Cancelar, 1=Guardar, 2=Salir
+        defaultId: 1, // Resalta el botón de Guardar
+        cancelId: 0,
+        title: 'Cambios sin guardar',
+        message: '¿Deseas guardar los cambios antes de salir?',
+        detail: 'Si cierras ahora, todo tu trabajo reciente se perderá para siempre.',
+    })
+
+    if (choice.response === 1) { 
+        // Eligió GUARDAR: Le decimos a React que ejecute la exportación
+        mainWindow.webContents.send('trigger-save-and-close')
+    } else if (choice.response === 2) { 
+        // Eligió SALIR: Cerramos la app de inmediato
+        mainWindow.removeAllListeners('close')
+        mainWindow.close()
+    }
+    // Si la respuesta es 0 (Cancelar), no hacemos nada y la app sigue abierta
+})
 
 /*
 |--------------------------------------------------------------------------
@@ -95,7 +137,10 @@ autoUpdater.on('checking-for-update', () => {
 autoUpdater.on('update-available', (info) => {
     console.log('Nueva actualización encontrada:', info.version)
     if (mainWindow) {
-        mainWindow.webContents.send('update-available', { version: info.version })
+        mainWindow.webContents.send('update-available', { 
+            version: info.version,
+            releaseNotes: info.releaseNotes // 👈 ¡AQUÍ ESTÁ LA MAGIA! Le mandamos las notas de GitHub
+        })
     }
 })
 
@@ -105,7 +150,11 @@ autoUpdater.on('update-not-available', () => {
 
 autoUpdater.on('download-progress', (progress) => {
     if (mainWindow) {
-        mainWindow.webContents.send('update-progress', { percent: Math.round(progress.percent) })
+        mainWindow.webContents.send('update-progress', { 
+            percent: Math.round(progress.percent),
+            transferred: progress.transferred, // 👈 Le mandamos los bytes descargados
+            total: progress.total              // 👈 Le mandamos el peso total en bytes
+        })
     }
 })
 
@@ -159,5 +208,27 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
+    }
+})
+
+ipcMain.handle('save-file-natively', async (event, arrayBuffer, defaultName) => {
+    // 1. Abrimos el explorador de archivos nativo de Windows y ESPERAMOS
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+        title: 'Guardar PDF antes de salir',
+        defaultPath: defaultName || 'documento_editado.pdf',
+        filters: [{ name: 'Documentos PDF', extensions: ['pdf'] }]
+    })
+
+    // 2. Si el usuario cierra el explorador o le da a Cancelar
+    if (canceled) {
+        return { success: false, canceled: true }
+    }
+
+    // 3. Si eligió dónde guardar, escribimos el archivo real en el disco duro
+    try {
+        fs.writeFileSync(filePath, Buffer.from(arrayBuffer))
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
     }
 })

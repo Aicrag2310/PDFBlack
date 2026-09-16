@@ -270,7 +270,7 @@ function SplitTool() {
   const handleSplit = async () => {
     if (!file) return
     setBusy(true)
-    const tid = toast.loading('Splitting...')
+    const tid = toast.loading('Dividiendo...')
     try {
       const buf = await file.arrayBuffer()
       const doc = await loadPdf(buf.slice(0))
@@ -282,32 +282,32 @@ function SplitTool() {
       if (mode === 'all')    { for (let i=1; i<=total; i++) ranges.push({ from: i, to: i }) }
 
       const results = await splitPdf(buf, ranges)
-      results.forEach((bytes, i) => downloadBytes(bytes, `split-part-${i+1}.pdf`))
-      toast.success(`Split into ${results.length} file(s)`, { id: tid })
-    } catch (e) { toast.error('Split failed: ' + e.message, { id: tid }) }
+      results.forEach((bytes, i) => downloadBytes(bytes, `dividido-${i+1}.pdf`))
+      toast.success(`Dividido en ${results.length} archivo(s)`, { id: tid })
+    } catch (e) { toast.error('División fallida: ' + e.message, { id: tid }) }
     setBusy(false)
   }
 
   return (
-    <ToolShell title="Split PDF" desc="Split by page range, every N pages, or extract every page separately.">
+    <ToolShell title="Dividir PDF" desc="Divide por rango de páginas, cada N páginas, o extrae cada página por separado.">
       <FileDropper file={file} onFile={setFile} onClear={() => setFile(null)} />
       <div className={styles.modeRow}>
-        {[['range','By range'],['every','Every N pages'],['all','All pages']].map(([v,l])=>(
+        {[['range','Por rango'],['every','Cada N páginas'],['all','Todas las páginas']].map(([v,l])=>(
           <button key={v} className={`${styles.modeBtn} ${mode===v?styles.modeBtnActive:''}`} onClick={()=>setMode(v)}>{l}</button>
         ))}
       </div>
       {mode === 'range' && (
         <div className={styles.rangeRow}>
-          <label>From page <input type="number" min={1} value={from} onChange={e=>setFrom(+e.target.value)} className={styles.numInput}/></label>
-          <label>To page   <input type="number" min={1} value={to}   onChange={e=>setTo(+e.target.value)}   className={styles.numInput}/></label>
+          <label>Desde la página <input type="number" min={1} value={from} onChange={e=>setFrom(+e.target.value)} className={styles.numInput}/></label>
+          <label>Hasta la página   <input type="number" min={1} value={to}   onChange={e=>setTo(+e.target.value)}   className={styles.numInput}/></label>
         </div>
       )}
       {mode === 'every' && (
         <div className={styles.rangeRow}>
-          <label>Split every <input type="number" min={1} value={every} onChange={e=>setEvery(+e.target.value)} className={styles.numInput}/> pages</label>
+          <label>Dividir cada <input type="number" min={1} value={every} onChange={e=>setEvery(+e.target.value)} className={styles.numInput}/> páginas</label>
         </div>
       )}
-      <ActionBtn onClick={handleSplit} disabled={!file} loading={busy} icon={Scissors}>Split PDF</ActionBtn>
+      <ActionBtn onClick={handleSplit} disabled={!file} loading={busy} icon={Scissors}>Dividir PDF</ActionBtn>
     </ToolShell>
   )
 }
@@ -430,16 +430,16 @@ function RotateTool() {
   }
 
   return (
-    <ToolShell title="Rotate PDF" desc="Rotate all pages or a specific page by 90°, 180°, or 270°.">
+    <ToolShell title="Rotar PDF" desc="Girar todas las páginas o una página específica por 90°, 180° o 270°.">
       <FileDropper file={file} onFile={setFile} onClear={() => setFile(null)} />
       <div className={styles.modeRow}>
-        {[['all','All pages'],['single','Single page']].map(([v,l])=>(
+        {[['all','Todas las páginas'],['single','Página individual']].map(([v,l])=>(
           <button key={v} className={`${styles.modeBtn} ${mode===v?styles.modeBtnActive:''}`} onClick={()=>setMode(v)}>{l}</button>
         ))}
       </div>
       {mode === 'single' && (
         <div className={styles.rangeRow}>
-          <label>Page number <input type="number" min={1} value={page} onChange={e=>setPage(+e.target.value)} className={styles.numInput}/></label>
+          <label>Número de página: <input type="number" min={1} value={page} onChange={e=>setPage(+e.target.value)} className={styles.numInput}/></label>
         </div>
       )}
       <div className={styles.angleRow}>
@@ -449,7 +449,7 @@ function RotateTool() {
           </button>
         ))}
       </div>
-      <ActionBtn onClick={handleRotate} disabled={!file} loading={busy} icon={RotateCcw}>Rotate {angle}°</ActionBtn>
+      <ActionBtn onClick={handleRotate} disabled={!file} loading={busy} icon={RotateCcw}>Rotar {angle}°</ActionBtn>
     </ToolShell>
   )
 }
@@ -822,7 +822,7 @@ function ExtractTool() {
   const handleExtract = async () => {
     if (!file || !pages.trim()) return
     setBusy(true)
-    const tid = toast.loading('Extracting...')
+    const tid = toast.loading('Extrayendo páginas...')
     try {
       const buf = await file.arrayBuffer()
       // Parse "1,3,5-8" style input
@@ -839,20 +839,20 @@ function ExtractTool() {
       }
       const unique = [...new Set(nums)].sort((a,b)=>a-b)
       const bytes  = await extractPages(buf, unique)
-      downloadBytes(bytes, `extracted-pages-${file.name}`)
-      toast.success(`Extracted ${unique.length} pages`, { id: tid })
+      downloadBytes(bytes, `páginas-extraídas-${file.name}`)
+      toast.success(`Extraídas ${unique.length} páginas`, { id: tid })
     } catch (e) { toast.error('Extract failed: ' + e.message, { id: tid }) }
     setBusy(false)
   }
 
   return (
-    <ToolShell title="Extract Pages" desc="Pull specific pages out of a PDF into a new file.">
+    <ToolShell title="Extraer Páginas" desc="Extraer páginas específicas de un PDF y guardarlas en un nuevo archivo.">
       <FileDropper file={file} onFile={setFile} onClear={() => setFile(null)} />
       <div className={styles.formField}>
-        <label className={styles.formLabel}>Pages to extract (e.g. 1, 3, 5-8)</label>
+        <label className={styles.formLabel}>Páginas que se deben extraer (e.j. 1, 3, 5-8)</label>
         <input className={styles.formInput} value={pages} onChange={e=>setPages(e.target.value)} placeholder="1, 3, 5-8, 12" />
       </div>
-      <ActionBtn onClick={handleExtract} disabled={!file || !pages.trim()} loading={busy} icon={FileSearch}>Extract Pages</ActionBtn>
+      <ActionBtn onClick={handleExtract} disabled={!file || !pages.trim()} loading={busy} icon={FileSearch}>Extraer Paginas</ActionBtn>
     </ToolShell>
   )
 }
@@ -902,18 +902,18 @@ function ReorderTool() {
   const handleSave = async () => {
     if (!file) return
     setBusy(true)
-    const tid = toast.loading('Reordering pages...')
+    const tid = toast.loading('Reordenando páginas...')
     try {
       const buf   = await file.arrayBuffer()
       const bytes = await reorderPages(buf, order)
-      downloadBytes(bytes, `reordered-${file.name}`)
+      downloadBytes(bytes, `reordenado-${file.name}`)
       toast.success('Done!', { id: tid })
     } catch (e) { toast.error('Failed: ' + e.message, { id: tid }) }
     setBusy(false)
   }
 
   return (
-    <ToolShell title="Reorder Pages" desc="Drag and drop pages into the order you want, then download.">
+    <ToolShell title="Reordenar páginas" desc="Arrastra y suelta las páginas en el orden que desees y, luego, descárgalas.">
       {!file
         ? <FileDropper file={null} onFile={onFile} onClear={() => {}} />
         : (
@@ -924,7 +924,7 @@ function ReorderTool() {
               <button className={styles.removeBtn} onClick={() => { setFile(null); setThumbs([]); setOrder([]) }}><X size={12}/></button>
             </div>
             {loading
-              ? <div className={styles.loadingRow}><Loader2 size={18} className={styles.spin}/> Loading pages...</div>
+              ? <div className={styles.loadingRow}><Loader2 size={18} className={styles.spin}/> Cargando páginas...</div>
               : (
                 <div className={styles.reorderGrid}>
                   {thumbs.map((t, i) => (
@@ -944,7 +944,7 @@ function ReorderTool() {
                 </div>
               )
             }
-            <ActionBtn onClick={handleSave} disabled={!file || loading} loading={busy} icon={Check}>Save Reordered PDF</ActionBtn>
+            <ActionBtn onClick={handleSave} disabled={!file || loading} loading={busy} icon={Check}>Guardar PDF reordenado</ActionBtn>
           </>
         )
       }
@@ -1251,13 +1251,11 @@ const TOOL_DEFS = [
   { id:'merge',     icon:Merge,       label:'Combinar PDF',     color:'#3b82f6', category:'Organizar', desc:'Combina varios archivos PDF en uno solo.' },
   { id:'unlock',    icon:Unlock,      label:'Desbloquear PDF',     color:'#10b981', category:'Secure',   desc:'Eliminar restricciones de copia e impresión.' },
   { id:'convert',   icon:FileDown,    label:'Convertir PDF',    color:'#10b981', category:'Convertir', desc:'Convierte PDF a Word, Excel o imágenes PNG.' },
- /* 
- 
-  { id:'split',     icon:Scissors,    label:'Split PDF',      color:'#e84545', category:'Organize', desc:'Split by range or every N pages.' },
-  { id:'extract',   icon:FileSearch,  label:'Extract Pages',  color:'#f59e0b', category:'Organize', desc:'Pull specific pages into a new file.' },
-  { id:'reorder',   icon:Layers,      label:'Reorder Pages',  color:'#8b5cf6', category:'Organize', desc:'Drag-and-drop page reordering.' },
-  { id:'rotate',    icon:RotateCcw,   label:'Rotate PDF',     color:'#8b5cf6', category:'Organize', desc:'Rotate pages 90°, 180°, or 270°.' },
-  { id:'compress',  icon:FileDown,    label:'Compress PDF',   color:'#f59e0b', category:'Optimize', desc:'Target-size visual compression.' },
+  { id:'split',     icon:Scissors,    label:'Dividir PDF',      color:'#e84545', category:'Organizar', desc:'Dividir por rango o cada N páginas.' },
+  { id:'extract',   icon:FileSearch,  label:'Extraer páginas',  color:'#f59e0b', category:'Organizar', desc:'Extrae páginas específicas a un nuevo archivo' },
+  { id:'reorder',   icon:Layers,      label:'Reordenar Páginas',  color:'#8b5cf6', category:'Organizar', desc:'Reordenación de páginas mediante arrastrar y soltar.' },
+  { id:'rotate',    icon:RotateCcw,   label:'Rotar PDF',     color:'#8b5cf6', category:'Organizar', desc:'Girar las páginas 90°, 180° o 270°.' },
+ /* { id:'compress',  icon:FileDown,    label:'Compress PDF',   color:'#f59e0b', category:'Optimize', desc:'Target-size visual compression.' },
   { id:'ocr',       icon:ScanLine,    label:'OCR Scanner',    color:'#10b981', category:'Convert',  desc:'Extract text from scanned PDFs.' },
   { id:'watermark', icon:Droplets,    label:'Add Watermark',  color:'#06b6d4', category:'Secure',   desc:'Text or image watermarks with preview and page targeting.' },
   { id:'protect',   icon:Lock,        label:'Protect PDF',    color:'#e84545', category:'Secure',   desc:'Add password encryption.' },

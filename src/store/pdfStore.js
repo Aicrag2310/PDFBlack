@@ -384,6 +384,9 @@ export const usePdfStore = create((set, get) => ({
     }
   }),
 
+  searchText: '',
+  setSearchText: (text) => set({ searchText: text }),
+
   reset: () => set({
     file: null, fileName: '', fileSize: 0, pageCount: 0, currentPage: 1,
     zoom: 1.0, editLayers: {}, extractedEdits: {}, selectedElement: null,

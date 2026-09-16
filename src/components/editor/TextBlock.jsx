@@ -114,7 +114,7 @@ export default function TextBlock({
 
     if (isExtracted) {
       commitExtractedEdit(pageNum, block, newStr)
-      toast.success('✓ Saved', { duration: 1000 })
+      toast.success('✓ Guardado', { duration: 1000 })
     } else {
       updateTextBlock(pageNum, block.id, { str: newStr })
     }

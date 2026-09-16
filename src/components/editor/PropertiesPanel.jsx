@@ -109,10 +109,10 @@ export default function PropertiesPanel() {
 
       {/* Document info */}
       <div className={styles.section}>
-        <div className={styles.sectionTitle}><Info size={12} /> Document</div>
-        <div className={styles.row}><span className={styles.lbl}>Pages</span><span className={styles.val}>{pageCount || '—'}</span></div>
-        <div className={styles.row}><span className={styles.lbl}>Edits</span><span className={styles.val}>{totalEdits}</span></div>
-        <div className={styles.row}><span className={styles.lbl}>File</span><span className={styles.val} style={{ fontSize: 10, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName || '—'}</span></div>
+        <div className={styles.sectionTitle}><Info size={12} /> Documento</div>
+        <div className={styles.row}><span className={styles.lbl}>Paginas</span><span className={styles.val}>{pageCount || '—'}</span></div>
+        <div className={styles.row}><span className={styles.lbl}>Cambios</span><span className={styles.val}>{totalEdits}</span></div>
+        <div className={styles.row}><span className={styles.lbl}>Archivo</span><span className={styles.val} style={{ fontSize: 10, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName || '—'}</span></div>
       </div>
 
       {/* Selection properties — only when something is selected */}
