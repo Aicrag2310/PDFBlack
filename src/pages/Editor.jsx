@@ -10,6 +10,9 @@ import PdfCanvas from '../components/editor/PdfCanvas.jsx'
 import PropertiesPanel from '../components/editor/PropertiesPanel.jsx'
 import DropZone from '../components/ui/DropZone.jsx'
 import styles from './Editor.module.css'
+import TabBar from '../components/editor/TabBar.jsx'
+import FloatingToolbox from '../components/editor/FloatingToolbox.jsx'
+
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
 export default function Editor() {
@@ -40,11 +43,16 @@ export default function Editor() {
         const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
         
         // 3. Extraer el nombre del archivo
-        const fileName = filePath.split('\\').pop().split('/').pop()
+        const name = filePath.split('\\').pop().split('/').pop()
 
-        // 4. Llamar a setFile exactamente igual que lo hace tu DropZone (arrayBuffer, name, size)
-        const { setFile } = usePdfStore.getState()
-        setFile(arrayBuffer, fileName, buffer.length)
+        const store = usePdfStore.getState()
+        if (store.tabs.length === 0 && !store.file) {
+          store.setFile(arrayBuffer, name, buffer.length)
+        } else if (store.openTab) {
+          store.openTab(arrayBuffer, name)
+        } else {
+          store.setFile(arrayBuffer, name, buffer.length)
+        }
         
         toast.success(`Abierto: ${fileName}`)
       } catch (error) {
@@ -114,8 +122,10 @@ export default function Editor() {
     <div className={styles.page}>
       <Navbar variant="app" />
       <EditorToolbar />
+            <TabBar />
 
       <div className={styles.workspace}>
+        <FloatingToolbox />
         {file ? (
           <>
             {/* Backdrop — tapping it closes whichever mobile drawer is open */}

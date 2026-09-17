@@ -20,6 +20,88 @@ export const usePdfStore = create((set, get) => ({
   currentPage: 1,
   zoom: 1.0,
 
+  tabs: [],
+  activeTabId: null,
+
+  openTab: (fileData, name) => {
+    const newTabId = `tab-${Date.now()}`
+    const newTab = {
+      id: newTabId,
+      file: fileData,
+      fileName: name || 'Documento.pdf',
+      pageCount: 0,
+      currentPage: 1,
+      zoom: 1.0,
+      editLayers: {},
+      pageBgs: {},
+      blockBgs: {},
+      selectedElement: null,
+      selectedElementPage: null,
+      searchText: ''
+    }
+    
+    set((state) => ({
+      tabs: [...state.tabs, newTab],
+      activeTabId: newTabId,
+      ...newTab
+    }))
+  },
+
+  switchTab: (tabId) => {
+    const state = get()
+    // Guardamos el estado actual en la pestaña que vamos a abandonar antes de cambiar
+    const updatedTabs = state.tabs.map(tab => {
+      if (tab.id === state.activeTabId) {
+        return {
+          ...tab,
+          editLayers: state.editLayers,
+          pageBgs: state.pageBgs,
+          blockBgs: state.blockBgs,
+          zoom: state.zoom,
+          currentPage: state.currentPage
+        }
+      }
+      return tab
+    })
+
+    const targetTab = updatedTabs.find(t => t.id === tabId)
+    if (!targetTab) return
+
+    set({
+      tabs: updatedTabs,
+      activeTabId: tabId,
+      file: targetTab.file,
+      fileName: targetTab.fileName,
+      pageCount: targetTab.pageCount,
+      currentPage: targetTab.currentPage,
+      zoom: targetTab.zoom,
+      editLayers: targetTab.editLayers,
+      pageBgs: targetTab.pageBg || {},
+      blockBgs: targetTab.blockBgs || {},
+      selectedElement: null,
+      selectedElementPage: null
+    })
+  },
+
+  closeTab: (tabId) => {
+    const state = get()
+    const remainingTabs = state.tabs.filter(t => t.id !== tabId)
+    
+    if (remainingTabs.length === 0) {
+      // Si cierran la última pestaña, limpiamos todo
+      set({ tabs: [], activeTabId: null, file: null, fileName: '', pageCount: 0, editLayers: {} })
+      return
+    }
+
+    // Si cerramos la pestaña activa, saltamos a la de al lado
+    if (state.activeTabId === tabId) {
+      const nextTab = remainingTabs[remainingTabs.length - 1]
+      state.switchTab(nextTab.id)
+    }
+
+    set({ tabs: remainingTabs })
+  },
+
   // editLayers[pageNum] = { texts: [], annotations: [] }
   editLayers: {},
 
@@ -53,7 +135,36 @@ export const usePdfStore = create((set, get) => ({
   mobilePagesOpen: false,
   mobilePropertiesOpen: false,
 
-  setFile: (file, fileName, fileSize) => set({ file, fileName, fileSize }),
+  setFile: (arrayBuffer, name, size) => {
+    // 'get' ya está disponible automáticamente aquí arriba gracias a create((set, get) => ...)
+    const state = get() 
+    
+    const newTabId = `tab-${Date.now()}`
+    const newTab = {
+      id: newTabId,
+      file: arrayBuffer,
+      fileName: name || 'Documento.pdf',
+      pageCount: 0,
+      currentPage: 1,
+      zoom: 1.0,
+      editLayers: {},
+      pageBgs: {},
+      blockBgs: {},
+    }
+
+    set({
+      tabs: [...state.tabs, newTab],
+      activeTabId: newTabId,
+      file: arrayBuffer,
+      fileName: name || 'Documento.pdf',
+      editLayers: {},
+      pageBgs: {},
+      blockBgs: {},
+      currentPage: 1,
+      zoom: 1.0,
+      selectedElement: null
+    })
+  },
   setPageCount: (pageCount) => set({ pageCount }),
   setCurrentPage: (p) => set({ currentPage: p, selectedElement: null, selectedElementPage: null }),
   setZoom: (z) => set({ zoom: Math.max(0.25, Math.min(3.0, Math.round(z * 100) / 100)) }),

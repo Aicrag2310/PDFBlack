@@ -44,7 +44,7 @@ export default function EditorToolbar() {
     selectedElement, selectedElementPage,
     searchText, setSearchText,
     updateTextBlock, commitExtractedEdit,
-    undoEdit, redoEdit, mobilePagesOpen, setMobilePagesOpen
+    undoEdit, redoEdit, mobilePagesOpen, setMobilePagesOpen, setSelectedElement
   } = usePdfStore()
 
   // Estados de IA, OCR y Lector de Voz
@@ -93,9 +93,12 @@ export default function EditorToolbar() {
   /* ─────────────────────────────────────────────────────────
      ⌨️ ATAJOS DE TECLADO GLOBALES
   ───────────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────────
+     ⌨️ ATAJOS DE TECLADO PRO (Búsqueda, Imprimir, Deshechos, Mover y Borrar)
+  ───────────────────────────────────────────────────────── */
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
-      // 🛡️ ESCUDO: Si escribe en un input, no interrumpimos
+      // 🛡️ ESCUDO: Si está escribiendo en un input o dentro de una caja de texto del PDF, no interferimos
       const isTyping = e.target.tagName.toLowerCase() === 'input' || 
                        e.target.tagName.toLowerCase() === 'textarea' ||
                        e.target.isContentEditable;
@@ -113,6 +116,63 @@ export default function EditorToolbar() {
       }
 
       if (isTyping) return
+
+      // 🗑️ BORRAR ELEMENTO SELECCIONADO CON 'Delete' o 'Backspace'
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+        e.preventDefault()
+        const targetPage = selectedElementPage || currentPage
+        
+        if (selectedElement.isExtracted || selectedElement.originalId) {
+          // Si es texto original del PDF, lo convertimos en borrador (blanco/oculto)
+          if (!selectedElement.isEdited) {
+            commitExtractedEdit(targetPage, selectedElement, '')
+          } else {
+            updateTextBlock(targetPage, selectedElement.id, { str: '', opacity: 0 })
+          }
+          toast.success('Texto borrado del PDF')
+        } else {
+          // Si es un bloque creado por ti, lo eliminamos de la tienda
+          usePdfStore.getState().removeTextBlock(targetPage, selectedElement.id)
+          toast.success('Eliminado')
+        }
+        setSelectedElement(null, null)
+        return
+      }
+
+      // ↔️ MOVER ELEMENTO SELECCIONADO CON LAS FLECHAS DEL TECLADO
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedElement) {
+        e.preventDefault()
+        const targetPage = selectedElementPage || currentPage
+        
+        // Si dejas presionada la tecla Shift, se moverá de 10 en 10 pixeles (súper rápido)
+        const step = e.shiftKey ? 10 : 1 
+        
+        let dx = 0
+        let dy = 0
+
+        if (e.key === 'ArrowUp') dy = -step
+        if (e.key === 'ArrowDown') dy = step
+        if (e.key === 'ArrowLeft') dx = -step
+        if (e.key === 'ArrowRight') dx = step
+
+        const currentX = selectedElement.x ?? 0
+        const currentY = selectedElement.y ?? 0
+
+        // Si es un texto extraído original que aún no se edita, aseguramos su capa de edición antes de moverlo
+        if (selectedElement.isExtracted && !selectedElement.isEdited) {
+          commitExtractedEdit(targetPage, selectedElement, selectedElement.str)
+        }
+
+        const targetId = (selectedElement.isExtracted && !selectedElement.isEdited) 
+          ? `edited-${selectedElement.id}` 
+          : selectedElement.id
+
+        updateTextBlock(targetPage, targetId, {
+          x: currentX + dx,
+          y: currentY + dy
+        })
+        return
+      }
 
       // Ctrl + Z: Deshacer
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -133,6 +193,7 @@ export default function EditorToolbar() {
       // Ctrl + V: Pegar
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboardRef.current) {
         e.preventDefault()
+        const targetPage = currentPage
         const newElement = {
           ...clipboardRef.current,
           id: `copy-${Date.now()}`,
@@ -140,23 +201,23 @@ export default function EditorToolbar() {
           y: clipboardRef.current.y + 20,
           isEdited: true 
         }
-        if (newElement.type === 'image') addImage(currentPage, newElement)
-        else addTextBlock(currentPage, newElement)
+        if (newElement.type === 'image') addImage(targetPage, newElement)
+        else addTextBlock(targetPage, newElement)
         toast.success('Pegado', { duration: 1000 })
       }
       // Ctrl + X: Cortar
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && selectedElement) {
         e.preventDefault()
         clipboardRef.current = { ...selectedElement }
-        updateTextBlock(currentPage, selectedElement.id, { opacity: 0, text: '' }) 
+        const targetPage = selectedElementPage || currentPage
+        updateTextBlock(targetPage, selectedElement.id, { opacity: 0, str: '' }) 
         toast.success('Cortado', { duration: 1000 })
       }
     }
 
     window.addEventListener('keydown', handleGlobalShortcuts)
     return () => window.removeEventListener('keydown', handleGlobalShortcuts)
-  }, [file, currentPage, selectedElement, addTextBlock, addImage, updateTextBlock])
-
+  }, [file, currentPage, selectedElement, selectedElementPage, addTextBlock, addImage, updateTextBlock, commitExtractedEdit, setSelectedElement])
   /* ─────────────────────────────────────────────────────────
      📥 MANEJO DE CIERRE Y GUARDADO NATIVO
   ───────────────────────────────────────────────────────── */

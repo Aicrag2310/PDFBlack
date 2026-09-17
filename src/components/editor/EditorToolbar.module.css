@@ -6,6 +6,8 @@
   background: var(--bg-panel);
   border-bottom: 1px solid var(--brd);
   flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
   flex-wrap: nowrap;
 }
@@ -18,7 +20,10 @@
   margin: 0 4px;
 }
 
-.spacer { flex: 1; }
+.spacer { 
+  flex: 1; 
+  min-width: 15px;
+}
 
 .toolGroup {
   display: flex;

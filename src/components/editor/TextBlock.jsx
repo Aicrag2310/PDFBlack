@@ -4,43 +4,6 @@ import toast from 'react-hot-toast'
 import { usePdfStore } from '../../store/pdfStore.js'
 import styles from './TextBlock.module.css'
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Browser overlay model: a pragmatic approximation of professional PDF editing.
-// True Sejda/Acrobat-style editing also needs PDF object surgery, font reuse,
-// glyph metrics, and render-diff repair during export.
-//
-// Layer stack (bottom → top):
-//   1. <canvas>        — PDF raster, always visible
-//   2. <div.textBlock> — transparent hit-area, opacity:0 normally
-//   3. On hover        — opacity:1, border:dashed, background:LOCAL_BG →
-//                        CSS text overlaid on canvas text with matching bg.
-//   4. On edit         — background:LOCAL_BG, opacity:1, cursor:text
-//                        User edits on a surface that matches the PDF bg.
-//   5. After commit    — user-added block uses LOCAL_BG to cover original
-//                        canvas text seamlessly (no white patch).
-//
-// WHY localBg not pageBg:
-//   pageBg is sampled from page corners — it's a single flat color.
-//   localBg is sampled from the canvas at the exact position of THIS text
-//   block. This matches watermarks, seals, gradients, colored regions.
-//   Result: edited text blends much better on non-white backgrounds.
-//
-// WHY opacity:0 not color:transparent:
-//   color:transparent makes text invisible but keeps the div fully in layout.
-//   Any border or background on the div is still opaque — causing ghost copies.
-//   opacity:0 makes the ENTIRE div invisible — div, border, background, text.
-//   On hover/select, we flip to opacity:1.
-//
-// WHY line-height:1 not 1.25:
-//   line-height:1.25 adds 25% spacing above+below the glyph.
-//   The div becomes taller than the visible text, misaligning the border.
-//   line-height:1 = the div height exactly matches the glyph height.
-//
-// WHY padding:0:
-//   padding:0 2px shifts text 2px right, misaligning with PDF canvas text.
-//   Zero padding = text starts exactly at the div's left edge = tx[4].
-// ══════════════════════════════════════════════════════════════════════════════
-
 export default function TextBlock({
   block, pageNum,
   isExtracted = false,
@@ -53,7 +16,7 @@ export default function TextBlock({
   const {
     selectedElement, setSelectedElement,
     updateTextBlock, removeTextBlock, commitExtractedEdit,
-    zoom,
+    zoom, activeTool
   } = usePdfStore()
 
   const divRef = useRef(null)
@@ -67,23 +30,19 @@ export default function TextBlock({
 
   const isSelected = selectedElement?.id === block.id
 
-  // Sync from props
   useEffect(() => { if (!dragging) setPos({ x: block.x, y: block.y }) }, [block.x, block.y, dragging])
   useEffect(() => { if (!editing) setDraftText(block.str) }, [block.str, editing])
 
-  // forceEdit from parent (context toolbar "Edit" button)
   useEffect(() => {
     if (forceEdit && !editing) startEdit()
     else if (!forceEdit && editing) doCommit()
   }, [forceEdit])
 
-  // Focus when editing starts
   useEffect(() => {
     if (!editing || !divRef.current) return
     const el = divRef.current
     requestAnimationFrame(() => {
       el.focus()
-      // Cursor at end (Sejda default)
       try {
         const range = document.createRange()
         range.selectNodeContents(el)
@@ -95,7 +54,6 @@ export default function TextBlock({
     })
   }, [editing])
 
-  // Deselect → commit
   useEffect(() => { if (!isSelected && editing) doCommit() }, [isSelected])
 
   const startEdit = () => {
@@ -128,7 +86,12 @@ export default function TextBlock({
   }, [block.str, onEditEnd])
 
   const handleClick = (e) => { e.stopPropagation(); if (!isSelected) setSelectedElement(block, pageNum) }
-  const handleDoubleClick = (e) => { e.stopPropagation(); setSelectedElement(block, pageNum); startEdit() }
+  const handleDoubleClick = (e) => { 
+    e.stopPropagation(); 
+    setSelectedElement(block, pageNum); 
+    // Solo permitimos editar si la herramienta activa es texto o selección
+    if (activeTool === 'select' || activeTool === 'text') startEdit() 
+  }
   const handleMouseEnter = () => setHovered(true)
   const handleMouseLeave = () => setHovered(false)
 
@@ -143,9 +106,8 @@ export default function TextBlock({
     doCommit()
   }
 
-  // Drag
   const handleMouseDown = (e) => {
-    if (editing) return
+    if (editing || (activeTool !== 'select' && activeTool !== 'text')) return
     e.preventDefault(); e.stopPropagation()
     dragRef.current = { ox: e.clientX / zoom - pos.x, oy: e.clientY / zoom - pos.y }
     setDragging(true)
@@ -160,38 +122,13 @@ export default function TextBlock({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [dragging, zoom, pos, pageNum, block.id, isExtracted, updateTextBlock])
 
-  // ── Typography ─────────────────────────────────────────────────────────────
   const fontFamily = block.fontFamily || 'Arial, Helvetica, sans-serif'
   const fontWeight = block.fontBold ? 700 : 400
   const fontStyle = block.fontItalic ? 'italic' : 'normal'
   const fontSize = Math.max(block.fontSize || 12, 4)
 
-  // ── Visibility model (SEJDA-STYLE — local background matching) ──────────
-  //
-  // The key insight from Sejda: after editing, the text block's background
-  // should match the local PDF background at that exact position — not a
-  // flat white. This makes edits invisible (no patchy white rectangles).
-  //
-  // extracted + not selected + not hovered:
-  //   opacity:0 — completely invisible, canvas shows through perfectly
-  //
-  // extracted + hovered (not editing):
-  //   opacity:1, background:LOCAL_BG, border:dashed-blue
-  //   Covers canvas text with matching bg — clean, no white patch.
-  //
-  // extracted + selected (not editing):
-  //   opacity:1, background:transparent, border:solid-blue
-  //
-  // editing (extracted):
-  //   opacity:1, background:LOCAL_BG, border:solid-blue
-  //   User edits on a surface that matches the PDF background.
-  //
-  // user-added (isEdited or new block):
-  //   opacity:1, background:LOCAL_BG — blends seamlessly with surrounding PDF.
-
   const isUserAdded = !isExtracted || block.isEdited
 
-  // Sample the local background color at this block's position
   const localBg = useMemo(() => {
     if (getLocalBg) {
       const w = block.width || fontSize * draftText.length * 0.6
@@ -201,97 +138,44 @@ export default function TextBlock({
     return pageBg || 'white'
   }, [getLocalBg, pos.x, pos.y, block.width, block.height, fontSize, draftText.length, pageBg])
 
-  const fitOverflow = useMemo(() => {
-    const maxWidth = block.maxEditWidth || block.originalWidth || block.width
-    if (!maxWidth || (!block.isEdited && !isExtracted)) return false
-    const lines = String(draftText || '').replace(/\r/g, '').split('\n')
-    const avgAdvance = block.averageAdvance || (block.originalStr?.length ? maxWidth / block.originalStr.length : fontSize * 0.55)
-    const estimatedWidth = Math.max(...lines.map(line => line.length * avgAdvance), 0)
-    const lineHeight = block.lineHeight || block.height || fontSize * 1.1
-    const maxHeight = block.maxEditHeight || block.originalHeight || block.height || lineHeight
-    const estimatedHeight = Math.max(lines.length, 1) * lineHeight
-    return estimatedWidth > maxWidth * 1.08 || estimatedHeight > maxHeight * 1.12
-  }, [
-    block.maxEditWidth, block.originalWidth, block.width, block.isEdited,
-    block.averageAdvance, block.originalStr, block.lineHeight, block.height,
-    block.maxEditHeight, block.originalHeight, isExtracted, draftText, fontSize,
-  ])
-
   let opacity = 1
   let background = 'transparent'
-  let borderColor = 'transparent'
   let cursor = 'default'
 
   if (isUserAdded) {
-    // Edited/new blocks — use local bg to blend with surrounding PDF content
     opacity = 1
     background = localBg
-    borderColor = editing ? '#3b82f6' : isSelected ? '#3b82f6' : 'rgba(232,69,69,0.35)'
     cursor = editing ? 'text' : 'grab'
   } else if (editing) {
-    // Editing extracted text — local bg covers canvas text cleanly
     opacity = 1
     background = localBg
-    borderColor = '#3b82f6'
     cursor = 'text'
-  } else if (isSelected) {
+  } else if (isSelected || hovered) {
     opacity = 1
-    background = 'transparent'
-    borderColor = '#3b82f6'
-    cursor = 'grab'
-  } else if (hovered) {
-    // Local bg covers canvas text — blends with PDF background
-    opacity = 1
-    background = localBg
-    borderColor = 'rgba(59,130,246,0.6)'
-    cursor = 'text'
+    background = hovered ? localBg : 'transparent'
+    cursor = isSelected ? 'grab' : 'text'
   } else {
-    // Completely invisible — canvas renders perfectly, no overlay at all
     opacity = 0
     background = 'transparent'
-    borderColor = 'transparent'
     cursor = 'default'
   }
 
-  // ── Feathered edges: soft blend for committed edits ──────────────────────
-  // Instead of a hard rectangle, use:
-  // 1. box-shadow halo (same color as bg) → soft glow at edges
-  // 2. slight padding extension → bg extends a bit beyond text
-  // 3. transparent border → no visible hard line
-  // This makes the patch invisible — it blends into the PDF background.
   const isCommitted = isUserAdded && !editing && !isSelected
-  const featherPad = isCommitted ? 2 : 0   // px of extra padding for soft bg
-  const featherShadow = isCommitted
-    ? `0 0 6px 4px ${localBg}`              // soft halo with local bg color
-    : editing
-      ? '0 0 0 2px rgba(59,130,246,0.15)'   // blue glow when editing
-      : 'none'
+  
+  // 🔥 EL SECRETO ANTI-SALTO: 
+  // Cuando editamos, agregamos 4px de respiro (padding). 
+  // Para que el texto no se mueva, compensamos con -4px (margin).
+  const visualPad = editing ? 4 : (isCommitted ? 2 : 0)
 
-  // Hide hard border for committed edits — the feathered bg replaces it
-  if (isCommitted) {
-    borderColor = 'transparent'
-  }
-
-  if (fitOverflow && (editing || isSelected)) {
-    borderColor = '#f97316'
-  }
-
-  // ── Width: grow right as you type, never wrap ──────────────────────────────
-  if (block.isEdited && !editing) background = 'transparent'
-
-  const baseWidth = block.width || fontSize * draftText.length * 0.6
-  const visualTextBox = editing || block.isEdited || !isExtracted
-  const widthStyle = visualTextBox
-    ? {
-        width: 'max-content',
-        minWidth: Math.max(fontSize * 0.75, 8),
-        maxWidth: 'none',
-        clipPath: `inset(0 0 ${Math.max((block.height || fontSize) - fontSize * 1.08, 0)}px 0)`,
-      }
-    : { width: baseWidth, minWidth: 'unset', maxWidth: 'none' }
-  const heightStyle = visualTextBox
-    ? { minHeight: Math.max(fontSize, 6) }
-    : { minHeight: Math.max(block.height || fontSize * 1.1, 6) }
+  const glowShadow = editing 
+    ? '0 0 0 2px #a855f7, 0 10px 25px rgba(0,0,0,0.15)' // Resplandor morado Premium
+    : isSelected 
+      ? '0 0 0 1.5px rgba(59,130,246,0.6)' // Borde azul sutil al seleccionar
+      : hovered && !isExtracted
+        ? '0 0 0 1px rgba(168,85,247,0.3)' // Borde lila sutil al pasar el ratón
+        : isCommitted 
+          ? `0 0 6px 4px ${localBg}` // Halo invisible que difumina los bordes
+          : 'none'
 
   return (
     <div
@@ -300,46 +184,39 @@ export default function TextBlock({
       suppressContentEditableWarning
       spellCheck={editing}
       style={{
-        // Layout
         position: 'absolute',
-        left: pos.x - featherPad,
-        top: pos.y - featherPad,
-        ...widthStyle,
-        minHeight: Math.max(block.height || fontSize * 1.1, 6) + featherPad * 2,
-        // ── The critical rendering properties ──
-        // line-height:1 → no extra spacing, box height = glyph height exactly
+        // 🔒 Coordenadas exactas fijas. Ya no hay restas matemáticas aquí.
+        left: pos.x,
+        top: pos.y,
+        
+        // ⚖️ Compensación matemática perfecta
+        padding: visualPad,
+        margin: -visualPad, 
+        
+        minWidth: Math.max(fontSize * 0.75, 8),
+        minHeight: Math.max(block.height || fontSize * 1.1, 6),
+        
         lineHeight: 1,
-        // Padding: 0 normally, slight extension for feathered committed edits
-        padding: featherPad,
-        margin: 0,
-        // Typography must match PDF raster
         fontSize,
         fontFamily,
         fontWeight,
         fontStyle,
         textDecoration: block.fontUnderline ? 'underline' : 'none',
-        letterSpacing: 0,
-        // Visibility
+        
         opacity,
         background,
         color: block.color || '#000000',
-        border: `1.5px solid ${borderColor}`,
-        borderRadius: isCommitted ? 2 : 1,
-        // Interaction
+        borderRadius: editing ? 6 : (isCommitted ? 2 : 1),
+        
         cursor,
         userSelect: editing ? 'text' : 'none',
-        zIndex: editing ? 30 : block.isEdited ? 9 : isSelected ? 12 : 10,
-        // No wrapping (grows right like Sejda)
+        zIndex: editing ? 50 : block.isEdited ? 9 : isSelected ? 12 : 10,
+        
         whiteSpace: 'pre',
-        overflow: 'visible',
         outline: 'none',
         boxSizing: 'content-box',
-        // Smooth visibility toggle
-        transition: editing ? 'none' : 'opacity 80ms, border-color 80ms',
-        // Feathered shadow for committed edits, blue glow when editing
-        boxShadow: fitOverflow && (editing || isSelected)
-          ? '0 0 0 2px rgba(249,115,22,0.18)'
-          : featherShadow,
+        transition: editing ? 'none' : 'box-shadow 0.15s ease, background 0.15s ease',
+        boxShadow: glowShadow,
       }}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
@@ -348,19 +225,16 @@ export default function TextBlock({
       onDoubleClick={handleDoubleClick}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      title={fitOverflow ? 'Text may overflow the original PDF run' : editing ? undefined : 'Double-click to edit'}
+      title={editing ? undefined : 'Doble clic para editar'}
     >
       <span style={{ position: 'relative', zIndex: 1 }}>{draftText}</span>
     </div>
   )
 }
 
-// ── Context toolbar (sibling of TextBlock, not inside contentEditable) ────────
-// Button sizing follows Apple/Google's ~40px minimum touch-target guidance —
-// the previous 26px-tall buttons with 12px icons were comfortable with a
-// mouse cursor but too small to tap reliably with a finger.
+// ── Context toolbar (se mantiene igual) ────────
 export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
-  const { removeTextBlock, updateTextBlock, setSelectedElement } = usePdfStore()
+  const { removeTextBlock, updateTextBlock, setSelectedElement, commitExtractedEdit } = usePdfStore()
 
   return (
     <div
@@ -386,7 +260,7 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
     >
       {[
         { label: '✏️ Editar', action: () => onEdit(), },
-        { label: null }, // separator
+        { label: null }, 
         {
           icon: <Copy size={16} />, title: 'Duplicar', action: () => {
             const clone = { ...block, id: `new-${Date.now()}`, x: pos.x + 14, y: pos.y + 14, isExtracted: false, isEdited: false, originalId: undefined }
@@ -396,9 +270,20 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
         },
         {
           icon: <Trash2 size={16} />, title: 'Delete', danger: true, action: () => {
-            removeTextBlock(pageNum, block.id)
+            if (block.isExtracted || block.originalId) {
+              // Si es un texto original del PDF, lo convertimos en un "borrador" dejándolo en blanco
+              if (!block.isEdited) {
+                commitExtractedEdit(pageNum, block, '')
+              } else {
+                updateTextBlock(pageNum, block.id, { str: '', opacity: 0 })
+              }
+              toast.success('Texto borrado del PDF')
+            } else {
+              // Si es un texto creado desde cero por ti, lo eliminamos por completo
+              removeTextBlock(pageNum, block.id)
+              toast.success('Eliminado')
+            }
             setSelectedElement(null, null)
-            toast.success('Eliminado')
           }
         },
       ].map((item, i) => {
