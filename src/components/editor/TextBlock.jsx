@@ -4,6 +4,13 @@ import toast from 'react-hot-toast'
 import { usePdfStore } from '../../store/pdfStore.js'
 import styles from './TextBlock.module.css'
 
+
+const FONTS = [
+  'Arial', 'Helvetica', 'Times New Roman', 'Georgia',
+  'Courier New', 'Verdana', 'Tahoma', 'Trebuchet MS',
+  'Calibri', 'Cambria', 'Garamond', 'Palatino',
+]
+
 export default function TextBlock({
   block, pageNum,
   isExtracted = false,
@@ -18,6 +25,7 @@ export default function TextBlock({
     updateTextBlock, removeTextBlock, commitExtractedEdit,
     zoom, activeTool
   } = usePdfStore()
+
 
   const divRef = useRef(null)
   const dragRef = useRef(null)
@@ -65,9 +73,18 @@ export default function TextBlock({
     if (!editing) return
     setEditing(false)
     onEditEnd?.()
+    
     const raw = divRef.current?.innerText ?? draftText
     const newStr = raw.replace(/\n+$/, '').replace(/\r/g, '')
     setDraftText(newStr)
+
+    // 🔥 LA SOLUCIÓN ANTI-DUPLICADOS: 
+    // Vaciamos el DOM manualmente para destruir los nodos fantasma del navegador
+    if (divRef.current) {
+      divRef.current.innerHTML = ''
+      divRef.current.innerText = newStr
+    }
+
     if (newStr === block.str) return
 
     if (isExtracted) {
@@ -131,7 +148,8 @@ export default function TextBlock({
 
   const localBg = useMemo(() => {
     if (getLocalBg) {
-      const w = block.width || fontSize * draftText.length * 0.6
+      const safeText = draftText || ''
+      const w = block.width || fontSize * safeText.length * 0.6 
       const h = block.height || fontSize * 1.1
       return getLocalBg(pos.x, pos.y, w, h)
     }
@@ -227,14 +245,21 @@ export default function TextBlock({
       onKeyDown={handleKeyDown}
       title={editing ? undefined : 'Doble clic para editar'}
     >
-      <span style={{ position: 'relative', zIndex: 1 }}>{draftText}</span>
+      {draftText}
     </div>
   )
 }
 
 // ── Context toolbar (se mantiene igual) ────────
 export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
-  const { removeTextBlock, updateTextBlock, setSelectedElement, commitExtractedEdit } = usePdfStore()
+  const { 
+    removeTextBlock, 
+    updateTextBlock, 
+    setSelectedElement, 
+    commitExtractedEdit,
+    applyTextFormat
+  } = usePdfStore()
+
 
   return (
     <div
@@ -255,12 +280,84 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
         whiteSpace: 'nowrap',
         userSelect: 'none',
       }}
-      onMouseDown={e => { e.preventDefault(); e.stopPropagation() }}
+      onMouseDown={e => { 
+        // 🔥 CORRECCIÓN: Si hacemos clic en el SELECT, OPTION o INPUT, dejamos que el navegador haga su trabajo
+        if (['SELECT', 'OPTION', 'INPUT'].includes(e.target.tagName)) {
+          e.stopPropagation()
+          return
+        }
+        e.preventDefault() 
+        e.stopPropagation() 
+      }}
       onClick={e => e.stopPropagation()}
     >
       {[
         { label: '✏️ Editar', action: () => onEdit(), },
         { label: null }, 
+        
+        // 🔤 --- SELECTOR DE FUENTES FLOTANTE ---
+        {
+          custom: true,
+          render: () => (
+            <select 
+              value={block.fontFamily || 'Arial'} 
+              onChange={(e) => applyTextFormat({ fontFamily: e.target.value, defaultFont: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()} // 🔥 Aseguramos que el clic pase
+              title="Cambiar fuente"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '6px',
+                padding: '0 6px',
+                margin: '0 4px',
+                height: 28,
+                fontSize: 13,
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+                maxWidth: 120
+              }}
+            >
+              {FONTS.map(f => (
+                <option key={f} value={f} style={{ color: '#000' }}>{f}</option>
+              ))}
+            </select>
+          )
+        },
+        
+        { 
+          label: 'B', title: 'Negrita', active: block.fontBold, 
+          action: () => applyTextFormat({ fontBold: !block.fontBold, defaultFontBold: !block.fontBold }) 
+        },
+        { 
+          label: 'I', title: 'Cursiva', active: block.fontItalic, 
+          action: () => applyTextFormat({ fontItalic: !block.fontItalic, defaultFontItalic: !block.fontItalic }) 
+        },
+        { 
+          label: 'U', title: 'Subrayado', active: block.fontUnderline, 
+          action: () => applyTextFormat({ fontUnderline: !block.fontUnderline, defaultFontUnderline: !block.fontUnderline }) 
+        },
+        
+        // 🎨 --- SELECTOR DE COLOR ---
+        {
+          custom: true, 
+          render: () => (
+            <input 
+              type="color" 
+              value={block.color || '#000000'}
+              title="Color del texto"
+              onChange={(e) => applyTextFormat({ color: e.target.value, defaultTextColor: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()} // 🔥 Aseguramos que el clic pase
+              style={{ 
+                width: 26, height: 26, padding: 0, border: 'none', 
+                background: 'transparent', cursor: 'pointer', margin: '0 4px' 
+              }}
+            />
+          )
+        },
+        { label: null }, 
+
         {
           icon: <Copy size={16} />, title: 'Duplicar', action: () => {
             const clone = { ...block, id: `new-${Date.now()}`, x: pos.x + 14, y: pos.y + 14, isExtracted: false, isEdited: false, originalId: undefined }
@@ -271,7 +368,6 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
         {
           icon: <Trash2 size={16} />, title: 'Delete', danger: true, action: () => {
             if (block.isExtracted || block.originalId) {
-              // Si es un texto original del PDF, lo convertimos en un "borrador" dejándolo en blanco
               if (!block.isEdited) {
                 commitExtractedEdit(pageNum, block, '')
               } else {
@@ -279,7 +375,6 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
               }
               toast.success('Texto borrado del PDF')
             } else {
-              // Si es un texto creado desde cero por ti, lo eliminamos por completo
               removeTextBlock(pageNum, block.id)
               toast.success('Eliminado')
             }
@@ -290,14 +385,23 @@ export function TextContextToolbar({ block, pageNum, pos, onEdit }) {
         if (item.label === null) return (
           <div key={i} style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
         )
+        
+        if (item.custom) return <div key={i} style={{ display: 'flex', alignItems: 'center' }}>{item.render()}</div>
+
         return (
           <button key={i} title={item.title} onMouseDown={e => { e.preventDefault(); e.stopPropagation(); item.action() }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              minWidth: 40, height: 40, padding: '0 12px',
-              border: 'none', borderRadius: 7, background: 'transparent',
-              color: item.danger ? '#f87171' : '#a1a1aa',
+              minWidth: item.label && item.label.length === 1 ? 32 : 40, 
+              height: 34, 
+              padding: item.label && item.label.length === 1 ? '0' : '0 12px',
+              border: 'none', borderRadius: 7, 
+              background: item.active ? 'rgba(168,85,247,0.2)' : 'transparent',
+              color: item.active ? '#a855f7' : (item.danger ? '#f87171' : '#a1a1aa'),
               fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              fontWeight: item.label === 'B' ? 'bold' : 'normal',
+              fontStyle: item.label === 'I' ? 'italic' : 'normal',
+              textDecoration: item.label === 'U' ? 'underline' : 'none',
             }}
           >
             {item.label || item.icon}

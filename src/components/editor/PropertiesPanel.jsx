@@ -13,23 +13,31 @@ export default function PropertiesPanel() {
     updateTextBlock, commitExtractedEdit,
   } = usePdfStore()
 
-  const totalEdits = Object.values(editLayers).reduce(
-    (sum, layer) => sum + (layer.texts?.length || 0) + (layer.annotations?.length || 0), 0
+  const totalEdits = Object.values(editLayers || {}).reduce(
+    (sum, layer) => sum + (layer.texts?.length || 0) + (layer.annotations?.length || 0) + (layer.images?.length || 0), 0
   )
 
   // Update a property on the selected element (works for both store & extracted)
+  // 🛡️ FUNCIÓN AUXILIAR PARA ACTUALIZAR TEXTOS O IMÁGENES/FIRMAS
   const updateProp = (updates) => {
     if (!selectedElement || !selectedElementPage) return
-    const targetId = selectedElement.isExtracted && !selectedElement.isEdited
-      ? `edited-${selectedElement.id}`
-      : selectedElement.id
-    // For extracted blocks that haven't been committed yet, commitExtractedEdit
-    // For store blocks (user-added or already-committed), updateTextBlock
-    if (selectedElement.isExtracted && !selectedElement.isEdited) {
-      commitExtractedEdit(selectedElementPage, selectedElement, selectedElement.str)
+    
+    // Si es una imagen o firma
+    if (selectedElement.type === 'image' || selectedElement.src) {
+      usePdfStore.getState().updateImage(selectedElementPage, selectedElement.id, updates)
+      // Actualizamos también el elemento seleccionado para que la UI responda al instante
+      usePdfStore.getState().setSelectedElement({ ...selectedElement, ...updates }, selectedElementPage)
+    } else {
+      // Si es un texto
+      const targetId = selectedElement.isExtracted && !selectedElement.isEdited
+        ? `edited-${selectedElement.id}`
+        : selectedElement.id
+      
+      if (selectedElement.isExtracted && !selectedElement.isEdited) {
+        commitExtractedEdit(selectedElementPage, selectedElement, selectedElement.str)
+      }
+      updateTextBlock(selectedElementPage, targetId, updates)
     }
-    updateTextBlock(selectedElementPage, targetId, updates)
-    // Also update selectedElement in store so UI reflects immediately
   }
 
   const handleWatermark = async () => {
@@ -103,6 +111,7 @@ export default function PropertiesPanel() {
       console.error(e)
     }
   }
+  
 
   return (
     <div className={styles.panel}>
@@ -137,7 +146,7 @@ export default function PropertiesPanel() {
 
           {/* Font family */}
           <div className={styles.row}>
-            <span className={styles.lbl}>Font</span>
+            <span className={styles.lbl}>Fuente</span>
             <select
               className={styles.ctrl}
               defaultValue="Helvetica"
@@ -151,7 +160,7 @@ export default function PropertiesPanel() {
 
           {/* Font size */}
           <div className={styles.row}>
-            <span className={styles.lbl}>Size</span>
+            <span className={styles.lbl}>Tamaño</span>
             <input
               type="number" min={4} max={200}
               className={styles.numCtrl}

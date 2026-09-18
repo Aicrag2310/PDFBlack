@@ -1,0 +1,1243 @@
+/* =========================================================
+   SIGNATURE MODAL
+   Adobe / Nitro inspired
+   ========================================================= */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: rgba(15, 23, 42, 0.58);
+
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  animation: overlayIn 160ms ease-out;
+}
+
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+.modal {
+  width: min(1080px, 96vw);
+  height: min(700px, 92vh);
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  background: var(--bg-card, #ffffff);
+
+  border: 1px solid
+    var(--border-color, #dfe3e8);
+
+  border-radius: 10px;
+
+  box-shadow:
+    0 24px 70px rgba(15, 23, 42, 0.22),
+    0 4px 16px rgba(15, 23, 42, 0.08);
+
+  color: var(--tx-1, #1f2937);
+
+  animation: modalIn 180ms ease-out;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.header {
+  min-height: 66px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+
+  background: var(
+    --bg-card,
+    #ffffff
+  );
+
+  border-bottom: 1px solid
+    var(--border-color, #e5e7eb);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerIcon {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 7px;
+
+  background: #f1f3f5;
+
+  color: #374151;
+}
+
+.header h2 {
+  margin: 0;
+
+  font-size: 16px;
+  font-weight: 650;
+
+  letter-spacing: -0.01em;
+
+  color: var(
+    --tx-1,
+    #202124
+  );
+}
+
+.headerLeft span {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 12px;
+
+  color: var(
+    --tx-2,
+    #6b7280
+  );
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 6px;
+
+  background: transparent;
+
+  color: #5f6368;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.closeButton:hover {
+  background: #f1f3f4;
+  color: #202124;
+}
+
+
+/* =========================================================
+   CONTENT
+   ========================================================= */
+
+.content {
+  min-height: 0;
+  flex: 1;
+
+  display: flex;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar {
+  width: 245px;
+  flex-shrink: 0;
+
+  padding: 22px 16px;
+
+  overflow-y: auto;
+
+  background: #f7f8fa;
+
+  border-right: 1px solid
+    var(--border-color, #e1e4e8);
+}
+
+.sidebarTitle {
+  margin: 0 8px 10px;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  color: #73777d;
+}
+
+
+/* =========================================================
+   TOOL BUTTONS
+   ========================================================= */
+
+.toolButton {
+  width: 100%;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 3px;
+  padding: 0 11px;
+
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  background: transparent;
+
+  color: #42464d;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.toolButton svg {
+  color: #656a72;
+}
+
+.toolButton:hover {
+  background: #eceff2;
+}
+
+.toolButtonActive {
+  background: #e4e7eb;
+
+  border-color: #d6d9dd;
+
+  color: #202124;
+
+  font-weight: 600;
+}
+
+.toolButtonActive svg {
+  color: #202124;
+}
+
+
+/* =========================================================
+   DIVIDER
+   ========================================================= */
+
+.divider {
+  height: 1px;
+
+  margin: 18px 4px;
+
+  background: #dfe2e6;
+}
+
+
+/* =========================================================
+   SIDEBAR SETTINGS
+   ========================================================= */
+
+.sidebarSection {
+  margin-bottom: 20px;
+}
+
+.label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  color: #555b63;
+}
+
+.textInput {
+  width: 100%;
+  height: 36px;
+
+  padding: 0 10px;
+
+  border: 1px solid #cfd3d8;
+  border-radius: 5px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #202124;
+
+  font-size: 12px;
+
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.textInput:hover {
+  border-color: #aeb4bb;
+}
+
+.textInput:focus {
+  border-color: #6b7280;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(107, 114, 128, 0.12);
+}
+
+
+/* =========================================================
+   COLORS
+   ========================================================= */
+
+.colors {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.colorButton,
+.customColor {
+  position: relative;
+
+  width: 27px;
+  height: 27px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  cursor: pointer;
+}
+
+.colorButton span,
+.customColor span {
+  width: 17px;
+  height: 17px;
+
+  display: block;
+
+  border-radius: 50%;
+
+  background: var(
+    --signature-color,
+    #111111
+  );
+}
+
+.colorButtonActive {
+  border-color: #6b7280;
+
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 3px #6b7280;
+}
+
+.customColor {
+  overflow: hidden;
+}
+
+.customColor input {
+  position: absolute;
+
+  width: 100%;
+  height: 100%;
+
+  opacity: 0;
+
+  cursor: pointer;
+}
+
+.customColor span {
+  width: 17px;
+  height: 17px;
+}
+
+
+/* =========================================================
+   RANGE
+   ========================================================= */
+
+.settingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 7px;
+}
+
+.settingHeader .label {
+  margin: 0;
+}
+
+.settingHeader > span {
+  font-size: 10px;
+  color: #777d84;
+}
+
+.range {
+  width: 100%;
+
+  height: 4px;
+
+  accent-color: #4b5563;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   WORKSPACE
+   ========================================================= */
+
+.workspace {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  background: #f3f4f6;
+}
+
+.workspaceHeader {
+  padding: 18px 22px 14px;
+
+  background: #ffffff;
+
+  border-bottom: 1px solid #e3e5e8;
+}
+
+.workspaceHeader h3 {
+  margin: 0;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  color: #202124;
+}
+
+.workspaceHeader p {
+  margin: 4px 0 0;
+
+  font-size: 11px;
+
+  color: #73777d;
+}
+
+
+/* =========================================================
+   DRAW WORKSPACE
+   ========================================================= */
+
+.signatureWorkspace {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  padding: 24px;
+}
+
+.canvasFrame {
+  position: relative;
+
+  width: min(760px, 100%);
+
+  background: #ffffff;
+
+  border: 1px solid #d7dade;
+
+  border-radius: 6px;
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.04);
+
+  overflow: hidden;
+}
+
+.paperHint {
+  position: absolute;
+
+  top: 12px;
+  left: 14px;
+
+  pointer-events: none;
+
+  font-size: 9px;
+  font-weight: 600;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+
+  color: #c0c4c8;
+}
+
+.canvas {
+  width: 100%;
+  height: auto;
+
+  display: block;
+
+  cursor: crosshair;
+
+  touch-action: none;
+}
+
+
+/* =========================================================
+   SECONDARY ACTION
+   ========================================================= */
+
+.secondaryAction {
+  height: 32px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 7px;
+
+  padding: 0 10px;
+
+  border: 1px solid #d4d7db;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  color: #4b5563;
+
+  font-size: 11px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.secondaryAction:hover {
+  background: #f5f6f7;
+  border-color: #bdc1c6;
+}
+
+
+/* =========================================================
+   TYPE WORKSPACE
+   ========================================================= */
+
+.typeWorkspace {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 20px 24px 28px;
+}
+
+.typeControls {
+  display: grid;
+
+  grid-template-columns:
+    minmax(240px, 1.5fr)
+    minmax(180px, 1fr)
+    minmax(150px, 0.8fr);
+
+  gap: 14px;
+
+  margin-bottom: 18px;
+}
+
+.typeInputGroup label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  color: #555b63;
+}
+
+.signatureTextInput {
+  width: 100%;
+  height: 38px;
+
+  padding: 0 11px;
+
+  border: 1px solid #cfd3d8;
+  border-radius: 5px;
+
+  background: #ffffff;
+
+  outline: none;
+
+  color: #202124;
+
+  font-size: 13px;
+}
+
+.signatureTextInput:focus {
+  border-color: #6b7280;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(107, 114, 128, 0.1);
+}
+
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+.selectWrapper {
+  position: relative;
+}
+
+.fontSelect {
+  width: 100%;
+  height: 38px;
+
+  appearance: none;
+
+  padding: 0 32px 0 11px;
+
+  border: 1px solid #cfd3d8;
+  border-radius: 5px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #30343a;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+.fontSelect:focus {
+  border-color: #6b7280;
+}
+
+.selectIcon {
+  position: absolute;
+
+  top: 50%;
+  right: 10px;
+
+  transform: translateY(-50%);
+
+  pointer-events: none;
+
+  color: #6b7280;
+}
+
+
+/* =========================================================
+   FONT CARDS
+   ========================================================= */
+
+.fontPreviewGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 8px;
+
+  margin-bottom: 16px;
+}
+
+.fontCard {
+  min-height: 78px;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: flex-start;
+  justify-content: center;
+
+  gap: 5px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #d8dbe0;
+  border-radius: 6px;
+
+  background: #ffffff;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.fontCard:hover {
+  background: #f8f9fa;
+
+  border-color: #bfc3c8;
+}
+
+.fontCardActive {
+  border-color: #7b8087;
+
+  background: #f3f4f5;
+}
+
+.fontName {
+  font-size: 9px;
+  font-weight: 600;
+
+  color: #777c83;
+}
+
+.fontSample {
+  width: 100%;
+
+  overflow: hidden;
+
+  font-size: 25px;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   TYPED PREVIEW
+   ========================================================= */
+
+.typedPreviewFrame {
+  position: relative;
+
+  min-height: 280px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #d7dade;
+  border-radius: 6px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.03);
+
+  overflow: hidden;
+}
+
+.previewLabel {
+  position: absolute;
+
+  top: 11px;
+  left: 13px;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  color: #c0c4c8;
+}
+
+.typedCanvas {
+  width: 100%;
+  height: auto;
+
+  display: block;
+}
+
+
+/* =========================================================
+   UPLOAD WORKSPACE
+   ========================================================= */
+
+.uploadWorkspace {
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 28px;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.dropZone {
+  width: min(560px, 100%);
+  min-height: 280px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: 1px dashed #b9bec5;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #444a51;
+
+  cursor: pointer;
+
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.dropZone:hover:not(:disabled) {
+  border-color: #7d838b;
+  background: #fafafa;
+}
+
+.dropZone:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.uploadIcon {
+  width: 52px;
+  height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 6px;
+
+  border-radius: 50%;
+
+  background: #f0f2f4;
+
+  color: #555b63;
+}
+
+.dropZone strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dropZone span {
+  font-size: 11px;
+
+  color: #747a81;
+}
+
+.dropZone small {
+  margin-top: 8px;
+
+  font-size: 10px;
+
+  color: #9a9fa5;
+}
+
+
+/* =========================================================
+   IMAGE PREVIEW
+   ========================================================= */
+
+.imagePreview {
+  width: min(760px, 100%);
+
+  background: #ffffff;
+
+  border: 1px solid #d7dade;
+  border-radius: 7px;
+
+  overflow: hidden;
+}
+
+.imagePreviewHeader {
+  min-height: 55px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 14px;
+
+  border-bottom: 1px solid #e4e6e9;
+}
+
+.imagePreviewHeader div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.imagePreviewHeader strong {
+  font-size: 12px;
+  font-weight: 600;
+
+  color: #34383d;
+}
+
+.imagePreviewHeader span {
+  font-size: 10px;
+
+  color: #858a90;
+}
+
+.imageCanvas {
+  min-height: 330px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  /*
+   * Patrón para hacer evidente
+   * la transparencia de la firma.
+   */
+  background-color: #ffffff;
+
+  background-image:
+    linear-gradient(
+      45deg,
+      #f1f2f3 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      -45deg,
+      #f1f2f3 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 75%,
+      #f1f2f3 75%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 75%,
+      #f1f2f3 75%
+    );
+
+  background-size: 20px 20px;
+
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0;
+}
+
+.imageCanvas img {
+  max-width: 90%;
+  max-height: 260px;
+
+  object-fit: contain;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.footer {
+  min-height: 62px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 18px;
+
+  background: #ffffff;
+
+  border-top: 1px solid
+    var(--border-color, #e1e4e8);
+}
+
+.footerInfo {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  font-size: 10px;
+
+  color: #777d84;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #4b5563;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.cancelButton,
+.saveButton {
+  height: 36px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 0 15px;
+
+  border-radius: 5px;
+
+  font-size: 12px;
+  font-weight: 550;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.cancelButton {
+  border: 1px solid #d2d5d9;
+
+  background: #ffffff;
+
+  color: #4b5158;
+}
+
+.cancelButton:hover {
+  background: #f5f6f7;
+}
+
+.saveButton {
+  border: 1px solid #30343a;
+
+  background: #30343a;
+
+  color: #ffffff;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #202328;
+
+  border-color: #202328;
+}
+
+.saveButton:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+.sidebar::-webkit-scrollbar,
+.typeWorkspace::-webkit-scrollbar {
+  width: 7px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.typeWorkspace::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.typeWorkspace::-webkit-scrollbar-thumb {
+  background: #cfd3d7;
+
+  border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.typeWorkspace::-webkit-scrollbar-thumb:hover {
+  background: #b7bcc2;
+}
+
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 850px) {
+  .modal {
+    width: 96vw;
+    height: 94vh;
+  }
+
+  .sidebar {
+    width: 205px;
+  }
+
+  .typeControls {
+    grid-template-columns: 1fr;
+  }
+
+  .fontPreviewGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .overlay {
+    padding: 10px;
+  }
+
+  .modal {
+    width: 100%;
+    height: 96vh;
+  }
+
+  .content {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns:
+      repeat(3, 1fr);
+
+    gap: 5px;
+
+    padding: 10px;
+
+    border-right: 0;
+    border-bottom: 1px solid #e1e4e8;
+  }
+
+  .sidebarTitle,
+  .divider,
+  .sidebarSection {
+    display: none;
+  }
+
+  .toolButton {
+    margin: 0;
+
+    justify-content: center;
+
+    padding: 0 8px;
+  }
+
+  .toolButton span {
+    font-size: 11px;
+  }
+
+  .workspaceHeader {
+    padding: 14px;
+  }
+
+  .signatureWorkspace,
+  .uploadWorkspace {
+    padding: 14px;
+  }
+
+  .fontPreviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    padding: 0 12px;
+  }
+
+  .footerInfo {
+    display: none;
+  }
+}

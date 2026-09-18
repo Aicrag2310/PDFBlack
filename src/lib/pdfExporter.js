@@ -941,6 +941,24 @@ export async function rotatePdf(arrayBuffer, pageNum, angle) {
   return await doc.save()
 }
 
+export async function movePageInternal(pdfBytes, sourceIndex, targetIndex) {
+  const pdfDoc = await PDFDocument.load(pdfBytes)
+  const [movedPage] = await pdfDoc.copyPages(pdfDoc, [sourceIndex - 1])
+  pdfDoc.removePage(sourceIndex - 1)
+  const insertAt = targetIndex > sourceIndex ? targetIndex - 1 : targetIndex - 1
+  pdfDoc.insertPage(insertAt, movedPage)
+  return await pdfDoc.save()
+}
+
+// 📥 2. Importar una página desde otro documento PDF abierto
+export async function importPageFromPdf(sourcePdfBytes, sourcePageNum, targetPdfBytes, targetPageNum) {
+  const sourceDoc = await PDFDocument.load(sourcePdfBytes)
+  const targetDoc = await PDFDocument.load(targetPdfBytes)
+  const [copiedPage] = await targetDoc.copyPages(sourceDoc, [sourcePageNum - 1])
+  targetDoc.insertPage(targetPageNum - 1, copiedPage)
+  return await targetDoc.save()
+}
+
 export async function rotateAllPages(arrayBuffer, angle) {
   const doc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
   doc.getPages().forEach(p => p.setRotation(degrees((p.getRotation().angle + angle) % 360)))

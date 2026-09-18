@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import { buildExtractedTextMetrics, estimateGlyphsForRun } from './pdfTextLayout.js'
+import { usePdfStore } from '../store/pdfStore.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -14,11 +15,14 @@ const fontDataCache = {}
 
 export async function loadPdf(arrayBuffer) {
   const copy = arrayBuffer.slice(0)
-  pdfDocument = await pdfjsLib.getDocument({
+  cachedFileBuffer = copy
+  cachedPdfDoc = await pdfjsLib.getDocument({
     data: copy,
     fontExtraProperties: true,
   }).promise
-  // Clear all caches on new file
+  
+  pdfDocument = cachedPdfDoc
+  
   Object.keys(pageCache).forEach(k => delete pageCache[k])
   Object.keys(fontMapCache).forEach(k => delete fontMapCache[k])
   Object.keys(fontDataCache).forEach(k => delete fontDataCache[k])
@@ -27,10 +31,35 @@ export async function loadPdf(arrayBuffer) {
 
 export function getPdfDocument() { return pdfDocument }
 
+let cachedFileBuffer = null
+let cachedPdfDoc = null
+
 async function getPage(pageNum) {
-  if (!pdfDocument) throw new Error('No PDF loaded')
-  if (!pageCache[pageNum]) pageCache[pageNum] = await pdfDocument.getPage(pageNum)
-  return pageCache[pageNum]
+  const fileBytes = usePdfStore.getState().file
+  if (!fileBytes) throw new Error('No PDF file loaded')
+
+  // 🚀 OPTIMIZACIÓN DE RENDIMIENTO:
+  // Si el archivo en Zustand es el mismo que ya teníamos cargado en caché, 
+  // reutilizamos el documento PDF instantáneamente sin volver a parsear bytes.
+  if (cachedFileBuffer === fileBytes && cachedPdfDoc) {
+    return await cachedPdfDoc.getPage(pageNum)
+  }
+
+  try {
+    const bufferCopy = fileBytes instanceof ArrayBuffer 
+      ? fileBytes.slice(0) 
+      : new Uint8Array(fileBytes).buffer.slice(0)
+
+    const loadingTask = pdfjsLib.getDocument({ data: bufferCopy })
+    cachedPdfDoc = await loadingTask.promise
+    cachedFileBuffer = fileBytes // Guardamos referencia para futuras llamadas
+
+    return await cachedPdfDoc.getPage(pageNum)
+  } catch (err) {
+    console.error("Error al cargar la página:", err)
+    if (!pdfDocument) throw err
+    return await pdfDocument.getPage(pageNum)
+  }
 }
 
 export const BASE_SCALE = 1.5

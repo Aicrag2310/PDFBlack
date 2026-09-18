@@ -12,6 +12,7 @@ import DropZone from '../components/ui/DropZone.jsx'
 import styles from './Editor.module.css'
 import TabBar from '../components/editor/TabBar.jsx'
 import FloatingToolbox from '../components/editor/FloatingToolbox.jsx'
+import SignatureModal from '../components/editor/SignatureModal.jsx'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
@@ -126,6 +127,7 @@ export default function Editor() {
 
       <div className={styles.workspace}>
         <FloatingToolbox />
+        <SignatureModal />
         {file ? (
           <>
             {/* Backdrop — tapping it closes whichever mobile drawer is open */}

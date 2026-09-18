@@ -13,6 +13,38 @@ const pushHistory = (s) => ({
 })
 
 export const usePdfStore = create((set, get) => ({
+  defaultFont: 'Arial',
+  defaultFontSize: 14,
+  defaultTextColor: '#000000',
+  defaultFontBold: false,
+  defaultFontItalic: false,
+  defaultFontUnderline: false,
+
+  applyTextFormat: (format) => {
+    // 1. Guardamos la preferencia global para los futuros textos
+    set((s) => ({ ...s, ...format }))
+
+    // Obtenemos el estado fresco
+    const state = get()
+    if (state.selectedElement && state.selectedElementPage) {
+      const el = state.selectedElement
+      const pageNum = state.selectedElementPage
+
+      // 🧠 LA MAGIA CORREGIDA:
+      // Si el texto NO tiene "isEdited: true", sabemos que es un texto virgen original del PDF.
+      if (!el.isEdited) {
+        // Primero, lo extraemos y lo pasamos a nuestra capa de edición flotante
+        state.commitExtractedEdit(pageNum, el, el.str)
+        
+        // Segundo, aplicamos el color/fuente a la nueva versión que se acaba de crear (edited-...)
+        // Usamos get() de nuevo para asegurarnos de tener la versión más reciente de la memoria
+        get().updateTextBlock(pageNum, `edited-${el.id}`, format)
+      } else {
+        // Si ya era un texto agregado por ti, o ya había sido editado antes, se actualiza directo
+        state.updateTextBlock(pageNum, el.id, format)
+      }
+    }
+  },
   file: null,
   fileName: '',
   fileSize: 0,
@@ -22,6 +54,25 @@ export const usePdfStore = create((set, get) => ({
 
   tabs: [],
   activeTabId: null,
+
+  savedSignatures: JSON.parse(localStorage.getItem('aicrag-signatures') || '[]'),
+  isSignatureModalOpen: false,
+  pendingSignature: null,
+  setSignatureModalOpen: (isOpen) => set({ isSignatureModalOpen: isOpen }),
+  setPendingSignature: (sig) => set({ pendingSignature: sig }),
+  
+  saveSignature: (signature) => set((state) => {
+    const newSignatures = [...state.savedSignatures, signature]
+    localStorage.setItem('aicrag-signatures', JSON.stringify(newSignatures))
+    return { savedSignatures: newSignatures }
+  }),
+  
+  deleteSignature: (id) => set((state) => {
+    const newSignatures = state.savedSignatures.filter(s => s.id !== id)
+    localStorage.setItem('aicrag-signatures', JSON.stringify(newSignatures))
+    return { savedSignatures: newSignatures }
+  }),
+  
 
   openTab: (fileData, name) => {
     const newTabId = `tab-${Date.now()}`
@@ -135,10 +186,31 @@ export const usePdfStore = create((set, get) => ({
   mobilePagesOpen: false,
   mobilePropertiesOpen: false,
 
-  setFile: (arrayBuffer, name, size) => {
-    // 'get' ya está disponible automáticamente aquí arriba gracias a create((set, get) => ...)
+  setFile: (arrayBuffer, name, size, updateCurrentTab = false) => {
     const state = get() 
     
+    // Si es una actualización de la pestaña actual (ej. reordenar, rotar, borrar página)
+    if (updateCurrentTab && state.activeTabId) {
+      const updatedTabs = state.tabs.map(tab => {
+        if (tab.id === state.activeTabId) {
+          return {
+            ...tab,
+            file: arrayBuffer,
+            pageCount: tab.pageCount // o se recalculará según corresponda
+          }
+        }
+        return tab
+      })
+      
+      set({
+        tabs: updatedTabs,
+        file: arrayBuffer,
+        fileName: name || state.fileName,
+      })
+      return
+    }
+
+    // Si es un archivo completamente nuevo, se crea la pestaña como antes:
     const newTabId = `tab-${Date.now()}`
     const newTab = {
       id: newTabId,

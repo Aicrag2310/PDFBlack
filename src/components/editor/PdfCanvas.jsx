@@ -10,7 +10,7 @@ import {
   BASE_SCALE,
 } from '../../lib/pdfRenderer.js'
 import TextBlock, { TextContextToolbar } from './TextBlock.jsx'
-import ImageBlock from './ImageBlock.jsx'
+import ImageBlock, { ImageContextToolbar } from './ImageBlock.jsx'
 import AnnotationLayer from './AnnotationLayer.jsx'
 import styles from './PdfCanvas.module.css'
 
@@ -23,9 +23,11 @@ function PdfPage({ pageNum }) {
     editLayers, addTextBlock, getLayer,
     setSelectedElement, selectedElement, selectedElementPage,
     extractedEdits, setPageBg: storeSetPageBg, setBlockBgs, searchText,
-    setCurrentPage
+    defaultFont, defaultFontSize, defaultTextColor,
+    defaultFontBold, defaultFontItalic, defaultFontUnderline,
+    setCurrentPage, pendingSignature, setPendingSignature, setActiveTool
   } = usePdfStore()
-
+  
   const pageRef = useRef(null)
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
@@ -45,7 +47,7 @@ function PdfPage({ pageNum }) {
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) setIsVisible(true)
-    }, { rootMargin: '1000px' }) // Carga la hoja cuando estés a 1000px de alcanzarla
+    }, { rootMargin: '1000px' })
     
     if (pageRef.current) observer.observe(pageRef.current)
     return () => observer.disconnect()
@@ -55,7 +57,7 @@ function PdfPage({ pageNum }) {
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) setCurrentPage(pageNum)
-    }, { threshold: 0.5 }) // Se activa cuando la hoja ocupa al menos la mitad de la pantalla
+    }, { threshold: 0.5 })
     
     if (pageRef.current) observer.observe(pageRef.current)
     return () => observer.disconnect()
@@ -131,24 +133,60 @@ function PdfPage({ pageNum }) {
 
   const handleClick = useCallback((e) => {
     const isBg = e.target === containerRef.current || e.target === canvasRef.current
+
+    // 🔥 MAGIA DE FIRMAS: MODO SELLO
+    if (activeTool === 'sign' && pendingSignature && isBg) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / zoom
+      const y = (e.clientY - rect.top) / zoom
+
+      const newSignature = {
+        id: `sig-${Date.now()}`,
+        type: 'image',
+        src: pendingSignature.dataUrl,
+        x: x - 75,
+        y: y - 37,
+        width: 150, 
+        height: 75,
+        isEdited: true,
+        zIndex: 9999
+      }
+      
+      usePdfStore.getState().addImage(pageNum, newSignature) 
+      setPendingSignature(null) 
+      setActiveTool('select') 
+      return
+    }
+
     if (isBg) { setSelectedElement(null, null); setEditingId(null) }
     if (activeTool !== 'text' || !isBg) return
 
     const rect = containerRef.current.getBoundingClientRect()
     const x = (e.clientX - rect.left) / zoom
     const y = (e.clientY - rect.top) / zoom
+    
     const newBlock = {
-      id: `new-${Date.now()}`, str: 'Nuevo texto',
+      id: `new-${Date.now()}`, 
+      str: '', 
       x, y, width: 120, height: 20,
-      fontSize: 14, fontName: 'Helvetica',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      fontBold: false, fontItalic: false,
-      stdFont: 'Helvetica', color: '#000000',
+      fontSize: defaultFontSize, 
+      fontFamily: defaultFont,
+      fontBold: defaultFontBold, 
+      fontItalic: defaultFontItalic,
+      fontUnderline: defaultFontUnderline, 
+      color: defaultTextColor,
+      isEdited: true
     }
+    
     addTextBlock(pageNum, newBlock)
     setSelectedElement(newBlock, pageNum)
     setEditingId(newBlock.id)
-  }, [activeTool, pageNum, zoom, addTextBlock, setSelectedElement])
+  }, [
+    activeTool, pageNum, zoom, addTextBlock, setSelectedElement, 
+    defaultFont, defaultFontSize, defaultTextColor, 
+    defaultFontBold, defaultFontItalic, defaultFontUnderline,
+    pendingSignature, setPendingSignature, setActiveTool
+  ])
 
   const getLocalBg = useCallback((x, y, w, h) => {
     if (!canvasRef.current) return pageBg || 'white'
@@ -200,7 +238,7 @@ function PdfPage({ pageNum }) {
         width: scaledW, 
         height: scaledH, 
         flexShrink: 0,
-        boxShadow: '0 8px 30px rgba(0,0,0,0.12)', // Sombra elegante para cada hoja
+        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
         backgroundColor: 'white',
         borderRadius: '4px',
         overflow: 'hidden'
@@ -209,10 +247,21 @@ function PdfPage({ pageNum }) {
       <div
         ref={containerRef}
         className={`${styles.pageContainer} ${activeTool === 'text' ? styles.cursorText : ''}`}
-        style={{ width: baseSize.width, height: baseSize.height, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+        style={{ 
+          width: baseSize.width, 
+          height: baseSize.height, 
+          transform: `scale(${zoom})`, 
+          transformOrigin: 'top left', 
+          cursor: (activeTool === 'sign' && pendingSignature) ? 'crosshair' : undefined 
+        }}
         onClick={handleClick}
       >
         <canvas ref={canvasRef} className={styles.canvas} />
+
+        {/* 🖼️ IMÁGENES AL FONDO DE LAS CAPAS INTERACTIVAS */}
+        {(layer.images || []).map(img => (
+          <ImageBlock key={img.id} image={img} pageNum={pageNum} zoom={zoom} />
+        ))}
 
         {isRendering && (
           <div className={styles.loadingOverlay}>
@@ -255,9 +304,14 @@ function PdfPage({ pageNum }) {
           />
         ))}
 
-        {(layer.images || []).map(img => (
-          <ImageBlock key={img.id} image={img} pageNum={pageNum} zoom={zoom} />
-        ))}
+        {/* Barra flotante individual de imagen/firma si está seleccionada en esta página */}
+        {selectedElement && (selectedElement.type === 'image' || selectedElement.src) && selectedElementPage === pageNum && (
+          <ImageContextToolbar 
+            image={selectedElement} 
+            pageNum={pageNum} 
+            pos={{ x: selectedElement.x * zoom, y: selectedElement.y * zoom }} 
+          />
+        )}
 
         <AnnotationLayer pageNum={pageNum} pageSize={baseSize} activeTool={activeTool} />
 
@@ -296,6 +350,15 @@ function PdfPage({ pageNum }) {
 export default function PdfCanvas() {
   const { file, pageCount, currentPage, zoom } = usePdfStore()
 
+  // 🎯 SCROLL AUTOMÁTICO AL CAMBIAR currentPage DESDE LAS MINIATURAS
+  useEffect(() => {
+    if (!currentPage) return
+    const element = document.querySelector(`[data-page="${currentPage}"]`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [currentPage])
+
   if (!file) return null
 
   return (
@@ -308,12 +371,12 @@ export default function PdfCanvas() {
         flexDirection: 'column',
         alignItems: 'center',
         padding: '40px 20px',
-        gap: '40px', // Espacio oscuro entre hoja y hoja
-        backgroundColor: '#e5e7eb', // Fondo gris profesional
+        gap: '40px',
+        backgroundColor: '#e5e7eb',
         height: '100%'
       }}
     >
-      {/* Indicador flotante tipo píldora (Glassmorphism) */}
+      {/* Indicador flotante tipo píldora */}
       <div style={{
         position: 'fixed',
         bottom: '29px',

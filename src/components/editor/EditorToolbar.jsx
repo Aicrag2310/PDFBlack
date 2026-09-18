@@ -14,6 +14,7 @@ import { renderPage } from '../../lib/pdfRenderer.js'
 import { ocrCanvas } from '../../lib/ocrEngine.js'
 import DropZone from '../ui/DropZone.jsx'
 import styles from './EditorToolbar.module.css'
+import { Trash2, MoreHorizontal } from 'lucide-react'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
 
@@ -44,7 +45,10 @@ export default function EditorToolbar() {
     selectedElement, selectedElementPage,
     searchText, setSearchText,
     updateTextBlock, commitExtractedEdit,
-    undoEdit, redoEdit, mobilePagesOpen, setMobilePagesOpen, setSelectedElement
+    undoEdit, redoEdit, mobilePagesOpen, setMobilePagesOpen, setSelectedElement,
+    applyTextFormat,
+    defaultFont, defaultFontSize, defaultTextColor, 
+    defaultFontBold, defaultFontItalic, defaultFontUnderline, savedSignatures, setSignatureModalOpen, setPendingSignature, deleteSignature
   } = usePdfStore()
 
   // Estados de IA, OCR y Lector de Voz
@@ -77,6 +81,57 @@ export default function EditorToolbar() {
   const [italic, setItalic] = useState(false)
   const [underline, setUnderline] = useState(false)
   const [color, setColor] = useState('#000000')
+
+  const currentFont = selectedElement?.fontFamily || defaultFont
+  const currentSize = selectedElement?.fontSize || defaultFontSize
+  const currentColor = selectedElement?.color || defaultTextColor
+  const isBold = selectedElement?.fontBold || defaultFontBold
+  const isItalic = selectedElement?.fontItalic || defaultFontItalic
+  const isUnderline = selectedElement?.fontUnderline || defaultFontUnderline
+
+  const [showSigMenu, setShowSigMenu] = useState(false)
+  const sigMenuRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sigMenuRef.current && !sigMenuRef.current.contains(event.target)) {
+        setShowSigMenu(false)
+      }
+    }
+    if (showSigMenu) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSigMenu])
+
+  const handleInsertSignature = (sig) => {
+    // 1. Tomamos la página en la que estás viendo el PDF ahorita
+    const targetPage = currentPage || 1; 
+
+    // 2. Construimos la imagen de la firma (usando 'src' que es lo que lee tu ImageBlock)
+    const newSignature = {
+      id: `sig-${Date.now()}`,
+      type: 'image',
+      src: sig.dataUrl,
+      x: 100,
+      y: 150,
+      width: 180,
+      height: 80,
+      opacity: 1,
+      rotation: 0,
+      zIndex: 100,
+      isEdited: true,
+      isSignature: true
+    };
+    
+    // 3. La inyectamos en el PDF usando la misma función robusta de las imágenes
+    addImage(targetPage, newSignature);
+    
+    // 4. Cerramos el menú y pasamos a la flecha para que puedas arrastrarla al instante
+    setShowSigMenu(false);
+    setActiveTool('select');
+    
+    // 5. Te avisamos que ya está puesta
+    toast.success(`¡Firma insertada en la página ${targetPage}!`);
+  }
 
   useEffect(() => {
     if (!sel) return
@@ -584,24 +639,254 @@ export default function EditorToolbar() {
       <DropZone compact />
       <div className={styles.sep} />
 
+      
+
       <button className={styles.toolBtn} onClick={() => setShowSearch(true)} title="Buscar texto (Ctrl+F)"><Search size={15} /></button>
       <div className={styles.sep} />
 
-      {/* Herramientas Principales */}
-      <div className={styles.toolGroup}>
-        {TOOLS.map(({ id, icon: Icon, label }) => (
-          <button key={id}
-            className={`${styles.toolBtn} ${activeTool === id ? styles.active : ''}`}
-            onClick={() => {
-              if (id === 'image') { fileInputRef.current.click(); setActiveTool(id) } 
-              else { setActiveTool(id) }
-            }}
-            title={label}
-          >
-            <Icon size={15} />
-          </button>
-        ))}
+      {/* --- HERRAMIENTAS PRINCIPALES --- */}
+       {/* --- HERRAMIENTAS PRINCIPALES --- */}
+       <div ref={sigMenuRef} className={styles.toolGroup} style={{ position: 'relative' }}>
+          {TOOLS.map(({ id, icon: Icon, label }) => (
+            <button 
+              key={id}
+              className={`${styles.toolBtn} ${activeTool === id ? styles.active : ''}`} 
+              title={label}
+              onClick={() => {
+                if (id === 'sign') {
+                  if (savedSignatures && savedSignatures.length > 0) {
+                    setShowSigMenu(!showSigMenu)
+                  } else {
+                    setSignatureModalOpen(true)
+                  }
+                  setActiveTool('sign')
+                } else {
+                  setActiveTool(id)
+                  setShowSigMenu(false)
+                }
+              }}
+            >
+              <Icon size={18} />
+            </button>
+          ))}
+
+          {/* 🔽 POPVER DE FIRMAS (DISEÑO PROFESIONAL TIPO MAC / FIGMA) */}
+          {/* 🔽 POPVER DE FIRMAS (DISEÑO PROFESIONAL TIPO MAC / FIGMA) */}
+          {showSigMenu && activeTool === 'sign' && (
+            <div 
+              style={{
+                position: 'fixed', // 🔥 CLAVE: 'fixed' lo saca de la cárcel de la barra superior
+                top: '65px',       // 🔥 Aparecerá justo debajo de la barra
+                left: '50%', 
+                transform: 'translateX(-50%)',
+                width: '260px', 
+                background: 'var(--bg-panel, #18181b)', 
+                border: '1px solid var(--brd, rgba(255,255,255,0.15))',
+                borderRadius: '10px', 
+                padding: '6px', 
+                zIndex: 999999, // 🔥 NIVEL DIOS: Flotará por encima de absolutamente todo
+                boxShadow: '0 12px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.4)', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '4px'
+              }}
+            >
+              <div style={{
+                fontSize: '11px', fontWeight: '600', color: 'var(--tx-3, #a1a1aa)',
+                padding: '6px 8px 4px', letterSpacing: '0.5px', textTransform: 'uppercase'
+              }}>
+                Mis firmas
+              </div>
+              
+              {/* Lista de firmas guardadas */}
+              <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+{savedSignatures.map(sig => (
+  <div
+    key={sig.id}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      width: '100%',
+      borderRadius: '7px',
+      transition: 'background 0.15s ease',
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background =
+        'var(--bg-card, rgba(255,255,255,0.08))'
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = 'transparent'
+    }}
+  >
+    {/* Firma */}
+    <button
+      onClick={() => handleInsertSignature(sig)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        flex: 1,
+        minWidth: 0,
+        background: 'transparent',
+        border: 'none',
+        padding: '6px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      {/* Preview */}
+      <div
+        style={{
+          width: '60px',
+          height: '40px',
+          flexShrink: 0,
+          background: '#ffffff',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.1)',
+          overflow: 'hidden',
+        }}
+      >
+        <img
+          src={sig.dataUrl}
+          alt={sig.name}
+          style={{
+            maxWidth: '90%',
+            maxHeight: '90%',
+            objectFit: 'contain',
+          }}
+        />
       </div>
+
+      {/* Nombre */}
+      <span
+        style={{
+          fontSize: '13px',
+          color: 'var(--tx-1, #fff)',
+          fontWeight: '500',
+          flex: 1,
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {sig.name}
+      </span>
+    </button>
+
+    {/* Opciones */}
+    <button
+      title="Opciones"
+      onClick={(e) => {
+        e.stopPropagation()
+        toast.success('Opciones de firma — Próximamente')
+      }}
+      style={{
+        width: '28px',
+        height: '28px',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: '5px',
+        color: 'var(--tx-3, #a1a1aa)',
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background =
+          'rgba(255,255,255,0.08)'
+        e.currentTarget.style.color =
+          'var(--tx-1, #fff)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color =
+          'var(--tx-3, #a1a1aa)'
+      }}
+    >
+      <MoreHorizontal size={16} strokeWidth={2} />
+    </button>
+
+    {/* Eliminar */}
+    <button
+      title="Eliminar firma"
+      onClick={(e) => {
+        e.stopPropagation()
+
+        if (window.confirm(`¿Eliminar la firma "${sig.name}"?`)) {
+          deleteSignature(sig.id)
+          toast.success('Firma eliminada')
+        }
+      }}
+      style={{
+        width: '28px',
+        height: '28px',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: '5px',
+        color: 'var(--tx-3, #a1a1aa)',
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background =
+          'rgba(239,68,68,0.12)'
+        e.currentTarget.style.color =
+          '#ef4444'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color =
+          'var(--tx-3, #a1a1aa)'
+      }}
+    >
+      <Trash2 size={15} strokeWidth={2} />
+    </button>
+  </div>
+))}
+              </div>
+
+              <div style={{ width: '100%', height: '1px', background: 'var(--brd, rgba(255,255,255,0.1))', margin: '4px 0' }} />
+
+              {/* Botón secundario para crear una nueva */}
+              <button 
+                onClick={() => { setShowSigMenu(false); setSignatureModalOpen(true) }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  width: '100%', background: 'transparent', color: '#a855f7', 
+                  border: '1px dashed rgba(168,85,247,0.4)', padding: '8px', 
+                  borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(168,85,247,0.1)'
+                  e.currentTarget.style.borderColor = '#a855f7'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderColor = 'rgba(168,85,247,0.4)'
+                }}
+              >
+                + Crear nueva firma
+              </button>
+            </div>
+          )}
+       </div>
+
+      
 
       {activeTool === 'shape' && (
         <div className={styles.toolGroup} style={{ marginLeft: '10px', background: 'var(--bg-card)', padding: '2px 8px', borderRadius: '6px' }}>
