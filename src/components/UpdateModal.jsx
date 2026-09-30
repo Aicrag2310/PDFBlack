@@ -274,11 +274,11 @@ export default function UpdateModal() {
             </h2>
 
             <div className="update-version">
-              Aicrag PDF {version}
+              Aicrag Black PDF {version}
             </div>
 
             <p className="update-description">
-              Hay una nueva versión de Aicrag PDF
+              Hay una nueva versión de Aicrag Black PDF
               disponible para instalar.
             </p>
 
@@ -341,7 +341,7 @@ export default function UpdateModal() {
             </h2>
 
             <div className="update-version">
-              Aicrag PDF {version}
+              Aicrag Black PDF {version}
             </div>
 
             <p className="update-description">
@@ -379,7 +379,7 @@ export default function UpdateModal() {
             </div>
 
             <p className="update-warning">
-              No cierres Aicrag PDF mientras se
+              No cierres Aicrag Black PDF mientras se
               descarga la actualización.
             </p>
           </>
@@ -397,7 +397,7 @@ export default function UpdateModal() {
             </h2>
 
             <div className="update-version">
-              Aicrag PDF {version}
+              Aicrag Black PDF {version}
             </div>
 
             <p className="update-description">

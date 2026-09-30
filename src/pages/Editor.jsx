@@ -11,7 +11,6 @@ import PropertiesPanel from '../components/editor/PropertiesPanel.jsx'
 import DropZone from '../components/ui/DropZone.jsx'
 import styles from './Editor.module.css'
 import TabBar from '../components/editor/TabBar.jsx'
-import FloatingToolbox from '../components/editor/FloatingToolbox.jsx'
 import SignatureModal from '../components/editor/SignatureModal.jsx'
 
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
@@ -121,12 +120,10 @@ export default function Editor() {
 
   return (
     <div className={styles.page}>
-      <Navbar variant="app" />
       <EditorToolbar />
             <TabBar />
 
       <div className={styles.workspace}>
-        <FloatingToolbox />
         <SignatureModal />
         {file ? (
           <>

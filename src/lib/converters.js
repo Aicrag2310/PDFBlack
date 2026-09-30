@@ -293,7 +293,7 @@ export async function convertToWord(
     )
 
     console.log(
-        'AICRAG PDF - CONVERSIÓN A WORD EDITABLE'
+        'AICRAG Black PDF - CONVERSIÓN A WORD EDITABLE'
     )
 
     console.log(

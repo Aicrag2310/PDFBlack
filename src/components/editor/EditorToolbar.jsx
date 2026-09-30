@@ -91,6 +91,7 @@ export default function EditorToolbar() {
 
   const [showSigMenu, setShowSigMenu] = useState(false)
   const sigMenuRef = useRef(null)
+  
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -177,19 +178,26 @@ export default function EditorToolbar() {
         e.preventDefault()
         const targetPage = selectedElementPage || currentPage
         
-        if (selectedElement.isExtracted || selectedElement.originalId) {
-          // Si es texto original del PDF, lo convertimos en borrador (blanco/oculto)
+        if (selectedElement.type === 'image') {
+          // 🔥 NUEVO: Detecta si es imagen o firma y la borra correctamente
+          usePdfStore.getState().removeImage(targetPage, selectedElement.id)
+          toast.success(selectedElement.isSignature ? 'Firma eliminada' : 'Imagen eliminada')
+        } 
+        else if (selectedElement.isExtracted || selectedElement.originalId) {
+          // Si es texto original del PDF, lo ocultamos
           if (!selectedElement.isEdited) {
             commitExtractedEdit(targetPage, selectedElement, '')
           } else {
             updateTextBlock(targetPage, selectedElement.id, { str: '', opacity: 0 })
           }
           toast.success('Texto borrado del PDF')
-        } else {
-          // Si es un bloque creado por ti, lo eliminamos de la tienda
+        } 
+        else {
+          // Si es una caja de texto creada por el usuario
           usePdfStore.getState().removeTextBlock(targetPage, selectedElement.id)
-          toast.success('Eliminado')
+          toast.success('Texto eliminado')
         }
+        
         setSelectedElement(null, null)
         return
       }
@@ -594,7 +602,7 @@ export default function EditorToolbar() {
   const downloadSummaryWord = () => {
     const htmlContent = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><meta charset='utf-8'><title>Resumen Aicrag PDF</title></head>
+      <head><meta charset='utf-8'><title>Resumen Aicrag Black PDF</title></head>
       <body style="font-family: Arial, sans-serif;">
         <h2>Resumen del Documento</h2>
         <p style="font-size: 14px; line-height: 1.5;">${summaryText.replace(/\n/g, '<br>')}</p>
@@ -660,6 +668,11 @@ export default function EditorToolbar() {
                     setSignatureModalOpen(true)
                   }
                   setActiveTool('sign')
+                } else if (id === 'image') {
+                  // 🔥 AQUÍ ESTÁ LA SOLUCIÓN: Abre la ventana para seleccionar la imagen
+                  fileInputRef.current?.click()
+                  setActiveTool('image')
+                  setShowSigMenu(false)
                 } else {
                   setActiveTool(id)
                   setShowSigMenu(false)

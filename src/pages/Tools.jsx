@@ -6,7 +6,7 @@ import {
   Scissors, Merge, FileDown, RotateCcw, ScanLine, Lock,
   Unlock, Droplets, EyeOff, Edit3, FileSearch, Layers,
   ChevronRight, Upload, FileText, X, Loader2, RotateCw, Image as ImageIcon,
-  GripVertical, Check, ArrowLeft, Trash2
+  GripVertical, Check, ArrowLeft, Trash2, ArrowRightLeft, Plus
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar.jsx'
 import {
@@ -18,6 +18,10 @@ import { loadPdf, renderThumbnail, renderPage } from '../lib/pdfRenderer.js'
 import { ocrCanvas } from '../lib/ocrEngine.js'
 import styles from './Tools.module.css'
 import { convertToWord, convertToExcel, convertToImages } from '../lib/converters.js'
+import * as pdfjsLib from 'pdfjs-dist'
+import * as Diff from 'diff'
+import { PDFDocument } from 'pdf-lib'
+
 
 /* ─────────────────── shared helpers ─────────────────── */
 
@@ -30,29 +34,68 @@ function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastr
       : ([f]) => f && onFile(f),
   })
 
+  // === DISEÑO MEJORADO PARA ARCHIVO SELECCIONADO ===
   if (!multiple && file) {
     return (
-      <div className={styles.fileCardSelected}>
-        <div className={styles.fileInfoWrapper}>
-          <div className={styles.fileIconBox}>
-            <FileText size={22} className={styles.pdfIconColor} />
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--bg-card, rgba(255, 255, 255, 0.03))',
+        border: '1px solid var(--brd, rgba(255, 255, 255, 0.08))',
+        padding: '16px 20px', borderRadius: '12px', transition: 'all 0.2s ease',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+      }}>
+        
+        {/* Info del Archivo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', overflow: 'hidden' }}>
+          <div style={{
+            background: 'rgba(232, 69, 69, 0.1)', padding: '12px', 
+            borderRadius: '10px', display: 'flex', alignItems: 'center', 
+            justifyContent: 'center', color: '#e84545'
+          }}>
+            <FileText size={24} />
           </div>
-          <div className={styles.fileMeta}>
-            <span className={styles.fileName}>{file.name}</span>
-            <span className={styles.fileSize}>{(file.size / 1024).toFixed(0)} KB • PDF</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+            <span style={{ 
+              fontWeight: '600', fontSize: '15px', color: 'var(--tx-1, #f0f0f4)', 
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' 
+            }}>
+              {file.name}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--tx-3, #888892)', fontWeight: '500' }}>
+              {(file.size / 1024).toFixed(0)} KB • PDF Document
+            </span>
           </div>
         </div>
+
+        {/* Botón de Eliminar Mejorado */}
         <button 
-          className={styles.removeBtnTrash} 
           onClick={onClear} 
-          title="Eliminar archivo"
+          title="Quitar archivo"
           type="button"
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+            color: '#ef4444', cursor: 'pointer', padding: '10px 14px', borderRadius: '8px',
+            display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600',
+            transition: 'all 0.2s ease', outline: 'none'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#ef4444'
+            e.currentTarget.style.color = '#ffffff'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+            e.currentTarget.style.color = '#ef4444'
+          }}
         >
           <Trash2 size={16} />
+          <span style={{ display: 'none', '@media (minWidth: 600px)': { display: 'inline' } }}>
+            Quitar
+          </span>
         </button>
       </div>
     )
   }
+
 
   return (
     <div {...getRootProps()} className={`${styles.dropArea} ${isDragActive ? styles.dropActive : ''}`}>
@@ -67,7 +110,6 @@ function FileDropper({ onFile, file, onClear, multiple = false, label = 'Arrastr
     </div>
   )
 }
-
 function ToolShell({ title, desc, children, wide = false }) {
   return (
     <div className={`${styles.toolUI} ${wide ? styles.toolUIWide : ''}`}>
@@ -221,44 +263,120 @@ function MergeTool() {
   })
 
   const handleMerge = async () => {
-    if (files.length < 2) { toast.error('Add at least 2 PDFs'); return }
+    if (files.length < 2) { toast.error('Agrega al menos 2 PDFs'); return }
     setBusy(true)
-    const tid = toast.loading(`Merging ${files.length} files...`)
+    const tid = toast.loading(`Combinando ${files.length} archivos...`)
     try {
       const buffers = await Promise.all(files.map(f => f.arrayBuffer()))
       const bytes = await mergePdfs(buffers)
-      downloadBytes(bytes, 'merged.pdf')
-      toast.success(`Done! Merged ${files.length} PDFs`, { id: tid })
-    } catch (e) { toast.error('Merge failed: ' + e.message, { id: tid }) }
+      downloadBytes(bytes, 'documentos-combinados.pdf')
+      toast.success(`¡Listo! ${files.length} PDFs combinados`, { id: tid })
+    } catch (e) { toast.error('Error al combinar: ' + e.message, { id: tid }) }
     setBusy(false)
   }
 
   return (
     <ToolShell title="Combinar PDF" desc="Combina varios archivos PDF en uno solo. Agrégalos a continuación; el orden es importante.">
-      <div {...getRootProps()} className={`${styles.dropArea} ${isDragActive ? styles.dropActive : ''}`}>
+      
+      {/* Zona para soltar archivos (Dropzone) */}
+      <div {...getRootProps()} className={`${styles.dropArea} ${isDragActive ? styles.dropActive : ''}`} style={{ marginBottom: files.length > 0 ? '20px' : '0' }}>
         <input {...getInputProps()} />
-        <Upload size={28} /><span>{isDragActive ? 'Suelta los archivos aquí!' : 'Arrastra y suelta los archivos PDF aquí o haz clic para agregar más'}</span>
+        <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '50%', color: '#3b82f6', marginBottom: '8px' }}>
+          <Upload size={24} />
+        </div>
+        <span style={{ fontSize: '15px', fontWeight: '500', color: 'var(--tx-1)' }}>
+          {isDragActive ? 'Suelta los archivos aquí!' : 'Arrastra y suelta tus PDF aquí'}
+        </span>
+        <span style={{ fontSize: '13px', color: 'var(--tx-3)' }}>o haz clic para agregar archivos</span>
       </div>
+
+      {/* Lista de archivos seleccionados con diseño PRO */}
       {files.length > 0 && (
-        <div className={styles.fileList}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
           {files.map((f, i) => (
-            <div key={i} className={styles.fileChip}>
-              <span className={styles.fileIndex}>{i + 1}</span>
-              <FileText size={14} />
-              <span className={styles.fileName}>{f.name}</span>
-              <span className={styles.fileSize}>{(f.size/1024).toFixed(0)} KB</span>
-              <button className={styles.removeBtn} onClick={() => setFiles(fs => fs.filter((_,j)=>j!==i))}><X size={12}/></button>
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'var(--bg-card, rgba(255, 255, 255, 0.03))',
+              border: '1px solid var(--brd, rgba(255, 255, 255, 0.08))',
+              padding: '12px 16px', borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+              transition: 'transform 0.2s ease'
+            }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', overflow: 'hidden' }}>
+                {/* Círculo indicador de Orden */}
+                <div style={{
+                  width: '28px', height: '28px', borderRadius: '50%', background: 'var(--bg-panel)',
+                  border: '1px solid var(--brd)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--tx-2)', flexShrink: 0
+                }}>
+                  {i + 1}
+                </div>
+
+                {/* Icono del PDF */}
+                <div style={{
+                  background: 'rgba(232, 69, 69, 0.1)', padding: '10px', 
+                  borderRadius: '10px', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', color: '#e84545', flexShrink: 0
+                }}>
+                  <FileText size={20} />
+                </div>
+
+                {/* Nombres y Peso del archivo */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                  <span style={{ 
+                    fontWeight: '600', fontSize: '14px', color: 'var(--tx-1, #f0f0f4)', 
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' 
+                  }}>
+                    {f.name}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--tx-3, #888892)', fontWeight: '500' }}>
+                    {(f.size / 1024).toFixed(0)} KB • Documento PDF
+                  </span>
+                </div>
+              </div>
+
+              {/* Botón Quitar Animado */}
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation() // Evita que se abra la ventana de explorar al borrar
+                  setFiles(fs => fs.filter((_, j) => j !== i))
+                }} 
+                title="Quitar archivo"
+                type="button"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444', cursor: 'pointer', padding: '8px 12px', borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600',
+                  transition: 'all 0.2s ease', outline: 'none', flexShrink: 0
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#ef4444'
+                  e.currentTarget.style.color = '#ffffff'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                  e.currentTarget.style.color = '#ef4444'
+                }}
+              >
+                <Trash2 size={14} />
+                <span style={{ display: 'none', '@media (minWidth: 600px)': { display: 'inline' } }}>
+                  Quitar
+                </span>
+              </button>
+
             </div>
           ))}
         </div>
       )}
+
+      {/* Botón de Acción Principal */}
       <ActionBtn onClick={handleMerge} disabled={files.length < 2} loading={busy} icon={Merge}>
-        Merge {files.length} PDFs → merged.pdf
+        Combinar {files.length} PDFs
       </ActionBtn>
     </ToolShell>
   )
 }
-
 function SplitTool() {
   const [file, setFile] = useState(null)
   const [mode, setMode] = useState('range') // range | every | all
@@ -870,17 +988,32 @@ function ReorderTool() {
     setLoading(true)
     try {
       const buf = await f.arrayBuffer()
-      const doc = await loadPdf(buf.slice(0))
+      
+      // 🔥 Usamos pdfjsLib directamente para aislar el documento de las demás herramientas
+      const doc = await pdfjsLib.getDocument(buf.slice(0)).promise
       const total = doc.numPages
       const pages = Array.from({length: total}, (_,i) => i+1)
       setOrder(pages)
+      
       const ts = []
-      for (let i=1; i<=Math.min(total,20); i++) {
-        const dataUrl = await renderThumbnail(i)
-        ts.push({ page: i, dataUrl })
+      // Generamos las miniaturas manualmente para máxima estabilidad
+      for (let i = 1; i <= Math.min(total, 20); i++) {
+        const page = await doc.getPage(i)
+        const viewport = page.getViewport({ scale: 0.35 }) // Tamaño optimizado para thumbnails
+        
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        
+        await page.render({ canvasContext: ctx, viewport }).promise
+        ts.push({ page: i, dataUrl: canvas.toDataURL('image/jpeg', 0.8) })
       }
       setThumbs(ts)
-    } catch (e) { toast.error('Failed to load: ' + e.message) }
+    } catch (e) { 
+      console.error('Failed to load:', e)
+      toast.error('Failed to load: ' + e.message) 
+    }
     setLoading(false)
   }
 
@@ -918,11 +1051,63 @@ function ReorderTool() {
         ? <FileDropper file={null} onFile={onFile} onClear={() => {}} />
         : (
           <>
-            <div className={styles.fileChip}>
-              <FileText size={14}/>
-              <span className={styles.fileName}>{file.name}</span>
-              <button className={styles.removeBtn} onClick={() => { setFile(null); setThumbs([]); setOrder([]) }}><X size={12}/></button>
+            {/* 🔥 NUEVO DISEÑO PROFESIONAL DEL ARCHIVO (TIPO ADOBE) 🔥 */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'var(--bg-card, rgba(255, 255, 255, 0.03))',
+              border: '1px solid var(--brd, rgba(255, 255, 255, 0.08))',
+              padding: '16px 20px', borderRadius: '12px', marginBottom: '20px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+            }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', overflow: 'hidden' }}>
+                <div style={{
+                  background: 'rgba(232, 69, 69, 0.1)', padding: '12px', 
+                  borderRadius: '10px', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', color: '#e84545'
+                }}>
+                  <FileText size={24} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+                  <span style={{ 
+                    fontWeight: '600', fontSize: '15px', color: 'var(--tx-1, #f0f0f4)', 
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' 
+                  }}>
+                    {file.name}
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--tx-3, #888892)', fontWeight: '500' }}>
+                    {(file.size / 1024).toFixed(0)} KB • PDF Document
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => { setFile(null); setThumbs([]); setOrder([]) }} 
+                title="Quitar archivo"
+                type="button"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444', cursor: 'pointer', padding: '10px 14px', borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600',
+                  transition: 'all 0.2s ease', outline: 'none'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#ef4444'
+                  e.currentTarget.style.color = '#ffffff'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                  e.currentTarget.style.color = '#ef4444'
+                }}
+              >
+                <Trash2 size={16} />
+                <span style={{ display: 'none', '@media (minWidth: 600px)': { display: 'inline' } }}>
+                  Quitar
+                </span>
+              </button>
             </div>
+            {/* 🔥 FIN DEL NUEVO DISEÑO 🔥 */}
+
             {loading
               ? <div className={styles.loadingRow}><Loader2 size={18} className={styles.spin}/> Cargando páginas...</div>
               : (
@@ -1183,6 +1368,229 @@ function EditTool() {
   )
 }
 
+function ImagesToPdfTool() {
+  const [images, setImages] = useState([])
+  const [busy, setBusy] = useState(false)
+
+  const onDrop = useCallback((acceptedFiles) => {
+    const validImages = acceptedFiles.filter(f => f.type.startsWith('image/'))
+    // Creamos una URL temporal para renderizar la miniatura
+    const imagesWithPreview = validImages.map(file => Object.assign(file, {
+      preview: URL.createObjectURL(file)
+    }))
+    setImages(prev => [...prev, ...imagesWithPreview])
+  }, [])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/jpeg': ['.jpeg', '.jpg'], 'image/png': ['.png'] },
+    onDrop,
+  })
+
+  // Limpiar memoria de las miniaturas al salir
+  useEffect(() => {
+    return () => images.forEach(file => URL.revokeObjectURL(file.preview))
+  }, [images])
+
+  const removeImage = (index) => {
+    setImages(imgs => imgs.filter((_, i) => i !== index))
+  }
+
+  const handleConvert = async () => {
+    if (images.length === 0) return
+    setBusy(true)
+    const tid = toast.loading(`Convirtiendo ${images.length} imágenes...`)
+    
+    try {
+      const pdfDoc = await PDFDocument.create()
+
+      for (const file of images) {
+        const buf = await file.arrayBuffer()
+        let img
+        if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+          img = await pdfDoc.embedJpg(buf)
+        } else if (file.type === 'image/png') {
+          img = await pdfDoc.embedPng(buf)
+        } else continue
+
+        const page = pdfDoc.addPage([img.width, img.height])
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height })
+      }
+
+      const pdfBytes = await pdfDoc.save()
+      downloadBytes(pdfBytes, 'documento-imagenes.pdf')
+      toast.success('¡PDF creado con éxito!', { id: tid })
+    } catch (e) {
+      toast.error('Error al crear PDF: ' + e.message, { id: tid })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <ToolShell title="Imágenes a PDF" desc="Convierte fotos, recibos o escaneos en un documento PDF. Visualiza y ordena tus páginas." wide>
+      
+      {/* Área de trabajo (Workspace) */}
+      <div style={{ background: 'var(--bg-canvas, #f3f4f6)', border: '1px solid var(--brd)', borderRadius: '12px', padding: '24px', minHeight: '300px' }}>
+        
+        {images.length === 0 ? (
+          <div {...getRootProps()} style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            height: '250px', border: '2px dashed var(--brd-2)', borderRadius: '12px', background: 'var(--bg-panel)',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}>
+            <input {...getInputProps()} />
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '50%', color: '#3b82f6', marginBottom: '16px' }}>
+              <ImageIcon size={32} />
+            </div>
+            <span style={{ fontSize: '15px', fontWeight: '500', color: 'var(--tx-1)' }}>
+              {isDragActive ? 'Suelta las imágenes aquí' : 'Arrastra JPG / PNG aquí'}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--tx-3)', marginTop: '8px' }}>o haz clic para explorar en tu equipo</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Grid de Miniaturas Tipo Adobe */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
+              {images.map((img, i) => (
+                <div key={i} style={{
+                  position: 'relative', background: 'var(--bg-panel)', border: '1px solid var(--brd)',
+                  borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ height: '160px', width: '100%', background: 'var(--bg-card)' }}>
+                    <img src={img.preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="preview" />
+                  </div>
+                  <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--tx-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {img.name}
+                    </span>
+                    <button onClick={() => removeImage(i)} style={{
+                      background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center'
+                    }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {/* Etiqueta de número de página */}
+                  <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                    {i + 1}
+                  </div>
+                </div>
+              ))}
+              
+              {/* Botón para agregar más al final del Grid */}
+              <div {...getRootProps()} style={{
+                height: '160px', border: '2px dashed var(--brd-2)', borderRadius: '8px', display: 'flex',
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tx-3)'
+              }}>
+                <input {...getInputProps()} />
+                <Plus size={24} style={{ marginBottom: '8px' }} />
+                <span style={{ fontSize: '12px', fontWeight: '500' }}>Añadir más</span>
+              </div>
+            </div>
+
+            {/* Barra de acción inferior */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--brd)' }}>
+              <ActionBtn onClick={handleConvert} disabled={images.length === 0} loading={busy} icon={FileText}>
+                Unir en PDF ({images.length} pág.)
+              </ActionBtn>
+            </div>
+          </div>
+        )}
+      </div>
+    </ToolShell>
+  )
+}
+
+
+function CompareTool() {
+  const [fileA, setFileA] = useState(null)
+  const [fileB, setFileB] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [differences, setDifferences] = useState(null)
+
+  // Función para extraer todo el texto puro de un PDF
+  const extractTextFromPdf = async (file) => {
+    const buf = await file.arrayBuffer()
+    const pdf = await pdfjsLib.getDocument(buf.slice(0)).promise
+    let fullText = ''
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      const strings = content.items.map(item => item.str)
+      fullText += strings.join(' ') + '\n'
+    }
+    return fullText
+  }
+
+  const handleCompare = async () => {
+    if (!fileA || !fileB) return
+    setBusy(true)
+    const tid = toast.loading('Analizando y comparando documentos...')
+
+    try {
+      const textA = await extractTextFromPdf(fileA)
+      const textB = await extractTextFromPdf(fileB)
+
+      // Compara los textos palabra por palabra
+      const diffResult = Diff.diffWords(textA, textB)
+      setDifferences(diffResult)
+
+      toast.success('Comparación completada', { id: tid })
+    } catch (e) {
+      toast.error('Error al comparar: ' + e.message, { id: tid })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <ToolShell title="Comparador de Contratos" desc="Sube dos versiones de un PDF. El sistema resaltará en rojo lo borrado y en verde lo añadido." wide>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+        <div>
+          <h4 style={{ color: 'var(--tx-2)', marginBottom: '8px', fontSize: '13px' }}>Versión A (Original)</h4>
+          <FileDropper file={fileA} onFile={setFileA} onClear={() => {setFileA(null); setDifferences(null)}} label="Arrastra el PDF Original" />
+        </div>
+        <div>
+          <h4 style={{ color: 'var(--tx-2)', marginBottom: '8px', fontSize: '13px' }}>Versión B (Modificado)</h4>
+          <FileDropper file={fileB} onFile={setFileB} onClear={() => {setFileB(null); setDifferences(null)}} label="Arrastra el PDF Nuevo" />
+        </div>
+      </div>
+
+      <ActionBtn onClick={handleCompare} disabled={!fileA || !fileB} loading={busy} icon={ArrowRightLeft}>
+        Analizar y Comparar Documentos
+      </ActionBtn>
+
+      {/* Resultados de la comparación */}
+      {differences && (
+        <div style={{ 
+          marginTop: '24px', 
+          background: 'var(--bg-panel)', 
+          border: '1px solid var(--brd)', 
+          borderRadius: '12px', 
+          padding: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          color: 'var(--tx-1)',
+          whiteSpace: 'pre-wrap' // Respeta los saltos de línea del PDF
+        }}>
+          {differences.map((part, index) => {
+            // Estilos dinámicos: Rojo para eliminados, Verde para añadidos
+            const color = part.added ? '#10b981' : part.removed ? '#ef4444' : 'inherit'
+            const backgroundColor = part.added ? 'rgba(16, 185, 129, 0.15)' : part.removed ? 'rgba(239, 68, 68, 0.15)' : 'transparent'
+            const textDecoration = part.removed ? 'line-through' : 'none'
+
+            return (
+              <span key={index} style={{ color, backgroundColor, textDecoration, borderRadius: '3px' }}>
+                {part.value}
+              </span>
+            )
+          })}
+        </div>
+      )}
+    </ToolShell>
+  )
+}
+
 function ConvertTool() {
     const [file, setFile] = useState(null)
     const [format, setFormat] = useState('word') // 'word' | 'excel' | 'images'
@@ -1255,7 +1663,9 @@ const TOOL_DEFS = [
   { id:'extract',   icon:FileSearch,  label:'Extraer páginas',  color:'#f59e0b', category:'Organizar', desc:'Extrae páginas específicas a un nuevo archivo' },
   { id:'reorder',   icon:Layers,      label:'Reordenar Páginas',  color:'#8b5cf6', category:'Organizar', desc:'Reordenación de páginas mediante arrastrar y soltar.' },
   { id:'rotate',    icon:RotateCcw,   label:'Rotar PDF',     color:'#8b5cf6', category:'Organizar', desc:'Girar las páginas 90°, 180° o 270°.' },
- /* { id:'compress',  icon:FileDown,    label:'Compress PDF',   color:'#f59e0b', category:'Optimize', desc:'Target-size visual compression.' },
+  { id:'img2pdf',   icon:ImageIcon,      label:'Imágenes a PDF',   color:'#f59e0b', category:'Convertir', desc:'Convierte JPG o PNG a PDF.' },
+  { id:'compare',   icon:ArrowRightLeft, label:'Comparar PDF',     color:'#3b82f6', category:'Organizar', desc:'Descubre qué cambió entre dos contratos.' }
+  /* { id:'compress',  icon:FileDown,    label:'Compress PDF',   color:'#f59e0b', category:'Optimize', desc:'Target-size visual compression.' },
   { id:'ocr',       icon:ScanLine,    label:'OCR Scanner',    color:'#10b981', category:'Convert',  desc:'Extract text from scanned PDFs.' },
   { id:'watermark', icon:Droplets,    label:'Add Watermark',  color:'#06b6d4', category:'Secure',   desc:'Text or image watermarks with preview and page targeting.' },
   { id:'protect',   icon:Lock,        label:'Protect PDF',    color:'#e84545', category:'Secure',   desc:'Add password encryption.' },
@@ -1267,7 +1677,7 @@ const TOOL_COMPONENTS = {
   edit: EditTool, merge: MergeTool, split: SplitTool, extract: ExtractTool,
   reorder: ReorderTool, rotate: RotateTool, compress: CompressTool,
   ocr: OcrTool, watermark: WatermarkTool, protect: ProtectTool,
-  unlock: UnlockTool, redact: RedactTool,convert: ConvertTool,
+  unlock: UnlockTool, redact: RedactTool,convert: ConvertTool, img2pdf: ImagesToPdfTool, compare: CompareTool
 }
 
 const CATEGORIES = ['All','Organizar','Optimizar','Convertir','Seguridad','Editar']
@@ -1281,7 +1691,6 @@ export default function Tools() {
 
   return (
     <div className={styles.page}>
-      <Navbar variant="app" />
       <div className={styles.layout}>
         <div className={styles.sidebar}>
           <div className={styles.sidebarHeader}>

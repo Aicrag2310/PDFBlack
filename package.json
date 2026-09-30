@@ -1,12 +1,11 @@
 {
   "name": "aicrag-pdf",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
-  "description": "Aicrag PDF — Editor de PDF gratuito y de código abierto.",
+  "description": "Aicrag Black PDF — Editor de PDF gratuito y de código abierto.",
   "author": "Aicrag",
   "type": "module",
   "main": "dist-electron/main.js",
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,12 +13,12 @@
     "lint": "eslint src --ext .js,.jsx",
     "electron:build": "vite build && electron-builder"
   },
-
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
     "@pdfsmaller/pdf-encrypt": "^1.0.2",
     "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
+    "diff": "^9.0.0",
     "docx": "^9.7.1",
     "electron-updater": "^6.6.2",
     "jszip": "^3.10.2",
@@ -35,7 +34,6 @@
     "xlsx": "^0.18.5",
     "zustand": "^4.5.5"
   },
-
   "devDependencies": {
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
@@ -46,35 +44,32 @@
     "vite": "^5.4.2",
     "vite-plugin-electron": "^0.29.0"
   },
-
   "build": {
     "appId": "com.aicrag.pdf",
-    "productName": "Aicrag PDF",
+    "productName": "Aicrag BlackPDF",
     "artifactName": "Aicrag-PDF-Setup-${version}.${ext}",
     "asar": true,
-
     "directories": {
       "output": "dist-electron"
     },
-
     "files": [
       "dist/**/*",
       "dist-electron/main.js",
       "package.json"
     ],
-
     "publish": {
-    "provider": "github",
-    "owner": "Aicrag2310",
-    "repo": "PDFBlack"
-  },
-
+      "provider": "github",
+      "owner": "Aicrag2310",
+      "repo": "PDFBlack"
+    },
     "win": {
       "icon": "public/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -86,7 +81,6 @@
         "role": "Editor"
       }
     ],
-
     "nsis": {
       "oneClick": false,
       "perMachine": true,

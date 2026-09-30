@@ -115,7 +115,7 @@ export default function Landing() {
           <p className={styles.heroSub}>
             Edita, convierte, firma y organiza tus documentos PDF sin complicaciones.
             <em>
-              {' '}Aicrag PDF te ofrece las herramientas que necesitas para trabajar con
+              {' '}Aicrag Black PDF te ofrece las herramientas que necesitas para trabajar con
               tus archivos de forma sencilla y segura.
             </em>
             {' '}Tus archivos permanecen en tu dispositivo.
@@ -172,7 +172,7 @@ export default function Landing() {
               </div>
 
               <span className={styles.previewTitle}>
-                constancia.pdf - Aicrag PDF
+                constancia.pdf - Aicrag Black PDF
               </span>
             </div>
 
@@ -327,7 +327,7 @@ export default function Landing() {
           </div>
 
           <h2 className={styles.sectionTitle}>
-            Aicrag PDF frente a otras herramientas
+            Aicrag Black PDF frente a otras herramientas
           </h2>
 
           <div className={styles.tableWrap}>
@@ -340,7 +340,7 @@ export default function Landing() {
 
                   <th className={styles.thDocforge}>
                     <div className={styles.thBadge}>
-                      Aicrag PDF
+                      Aicrag Black PDF
                     </div>
 
                     <div className={styles.thPrice}>
@@ -413,7 +413,7 @@ export default function Landing() {
               </div>
 
               <div className={styles.howDesc}>
-                Utiliza las herramientas de Aicrag PDF para editar, organizar,
+                Utiliza las herramientas de Aicrag Black PDF para editar, organizar,
                 firmar y modificar tu documento.
               </div>
             </div>
@@ -485,7 +485,7 @@ export default function Landing() {
             </div>
 
             <span>
-              Aicrag PDF
+              Aicrag Black PDF
             </span>
 
           </div>
@@ -519,7 +519,7 @@ export default function Landing() {
           </div>
 
           <div className={styles.footerNote}>
-            Aicrag PDF · Código abierto · Construido con pdf-lib, PDF.js y
+            Aicrag Black PDF · Código abierto · Construido con pdf-lib, PDF.js y
             Tesseract.js · Sin rastreo
           </div>
 

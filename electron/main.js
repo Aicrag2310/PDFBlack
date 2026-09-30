@@ -42,7 +42,8 @@ function createWindow() {
         height: 800,
         minWidth: 1000,
         minHeight: 700,
-        autoHideMenuBar: true,
+        frame: false,            
+        titleBarStyle: 'hidden',
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -233,4 +234,21 @@ ipcMain.handle('save-file-natively', async (event, arrayBuffer, defaultName) => 
     } catch (error) {
         return { success: false, error: error.message }
     }
+})
+
+ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize()
+})
+
+ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) mainWindow.unmaximize()
+        else mainWindow.maximize()
+    }
+})
+
+ipcMain.on('window-close', () => {
+    // Al llamar a close(), automáticamente se disparará tu evento 'close' 
+    // que ya tienes configurado arriba, activando el cuadro de "Guardar PDF". ¡Perfecto!
+    if (mainWindow) mainWindow.close() 
 })

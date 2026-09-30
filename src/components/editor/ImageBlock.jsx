@@ -252,49 +252,48 @@ export function ImageContextToolbar({ image, pageNum, pos }) {
       }}
       onClick={e => e.stopPropagation()}
     >
-      {/* 🎨 Selector de color */}
-      <input 
-        type="color" 
-        value={image.color || '#000000'}
-        title="Cambiar color de la firma"
-        onChange={(e) => applyModifications(e.target.value, undefined)}
-        style={{ 
-          width: 24, height: 24, padding: 0, border: 'none', 
-          background: 'transparent', cursor: 'pointer', borderRadius: '4px' 
-        }}
-      />
+      
+      {/* 🔥 MAGIA AQUÍ: Solo mostramos Color y Grosor si es una firma */}
+      {image.isSignature && (
+        <>
+          {/* 🎨 Selector de color */}
+          <input 
+            type="color" 
+            value={image.color || '#000000'}
+            title="Cambiar color de la firma"
+            onChange={(e) => applyModifications(e.target.value, undefined)}
+            style={{ 
+              width: 24, height: 24, padding: 0, border: 'none', 
+              background: 'transparent', cursor: 'pointer', borderRadius: '4px' 
+            }}
+          />
 
-      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
 
-      {/* 🎚️ Control de Grosor Fluido */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', color: '#a1a1aa' }}>
-        <span>Grosor: {thickness}</span>
-        <input 
-          type="range" 
-          min="0" 
-          max="3" 
-          step="1"
-          value={thickness}
-          onChange={(e) => {
-            const val = Number(e.target.value)
-            setThickness(val) // Mueve el slider visualmente al instante
-          }}
-          onMouseUp={(e) => {
-            applyModifications(undefined, Number(e.target.value)) // Aplica el cálculo pesado al soltar o cambiar
-          }}
-          onTouchEnd={(e) => {
-            applyModifications(undefined, Number(e.target.value))
-          }}
-          style={{ width: '60px', accentColor: '#a855f7', cursor: 'pointer' }}
-          title="Ajustar grosor del trazo"
-        />
-      </div>
+          {/* 🎚️ Control de Grosor Fluido */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', color: '#a1a1aa' }}>
+            <span>Grosor: {thickness}</span>
+            <input 
+              type="range" 
+              min="0" 
+              max="3" 
+              step="1"
+              value={thickness}
+              onChange={(e) => setThickness(Number(e.target.value))}
+              onMouseUp={(e) => applyModifications(undefined, Number(e.target.value))}
+              onTouchEnd={(e) => applyModifications(undefined, Number(e.target.value))}
+              style={{ width: '60px', accentColor: '#a855f7', cursor: 'pointer' }}
+              title="Ajustar grosor del trazo"
+            />
+          </div>
 
-      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+        </>
+      )}
 
       {/* Duplicar */}
       <button 
-        title="Duplicar firma"
+        title="Duplicar elemento"
         onClick={() => {
           const clone = { 
             ...image, 
@@ -303,7 +302,7 @@ export function ImageContextToolbar({ image, pageNum, pos }) {
             y: image.y + 20 
           }
           addImage(pageNum, clone)
-          toast.success('Firma duplicada')
+          toast.success(image.isSignature ? 'Firma duplicada' : 'Imagen duplicada')
         }}
         style={toolbarBtnStyle}
       >
@@ -311,16 +310,15 @@ export function ImageContextToolbar({ image, pageNum, pos }) {
       </button>
 
       {/* Mandar al fondo */}
-      {/* Mandar al fondo */}
       <button 
         title="Mandar al fondo"
         onClick={() => {
           updateImage(pageNum, image.id, { zIndex: 0 })
-          toast.success('Firma enviada al fondo')
+          toast.success('Enviado al fondo')
         }}
         style={toolbarBtnStyle}
       >
-        <ArrowDown size5={15} />
+        <ArrowDown size={15} />
       </button>
 
       {/* Traer al frente */}
@@ -328,7 +326,7 @@ export function ImageContextToolbar({ image, pageNum, pos }) {
         title="Traer al frente"
         onClick={() => {
           updateImage(pageNum, image.id, { zIndex: 99999 })
-          toast.success('Firma traída al frente')
+          toast.success('Traído al frente')
         }}
         style={toolbarBtnStyle}
       >
@@ -339,11 +337,11 @@ export function ImageContextToolbar({ image, pageNum, pos }) {
 
       {/* Eliminar */}
       <button 
-        title="Eliminar firma"
+        title="Eliminar elemento"
         onClick={() => {
           removeImage(pageNum, image.id)
           setSelectedElement(null, null)
-          toast.success('Firma eliminada')
+          toast.success(image.isSignature ? 'Firma eliminada' : 'Imagen eliminada')
         }}
         style={{ ...toolbarBtnStyle, color: '#f87171' }}
       >
